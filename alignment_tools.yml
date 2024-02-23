@@ -1,0 +1,10 @@
+name: alignment_tools
+channels:
+- conda-forge
+dependencies:
+- python == 3.8.16
+- pip
+- ipython
+- pyqt
+- pip:
+  - git+https://github.com/ElTinmar/qt_widgets.git@main
