@@ -17,6 +17,8 @@ class ImageControl(QWidget):
     '''
 
     # TODO be able to reorganize widgets vertically to change the order of operations
+    # TODO make sure min < max and handle 
+    # TODO c&b and min/max not independent, change them both
 
     def __init__(self, image: NDArray, *args, **kwargs):
 
