@@ -1,4 +1,4 @@
-from alignment_tools.landmark_2D import ImageControl
+from alignment_tools.align_affine_2D import ImageControl
 from PyQt5.QtWidgets import QApplication
 import sys
 import cv2

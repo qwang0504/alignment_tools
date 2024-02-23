@@ -160,7 +160,7 @@ class ImageControl(QWidget):
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
         self.update_histogram()
 
-class Landmarks2D(QWidget):
+class AlignAffine2D(QWidget):
     def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
         
         super().__init__(*args, **kwargs)
