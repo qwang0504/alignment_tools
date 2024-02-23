@@ -85,16 +85,22 @@ class ImageControl(QWidget):
 
     def layout_components(self):
 
-        layout_parameters = QVBoxLayout(self)
-        layout_parameters.addStretch()
-        layout_parameters.addWidget(self.image_label)
-        layout_parameters.addWidget(self.min)
-        layout_parameters.addWidget(self.max)
-        layout_parameters.addWidget(self.gamma)
-        layout_parameters.addWidget(self.contrast)
-        layout_parameters.addWidget(self.brightness)
-        layout_parameters.addStretch()
+        layout_buttons = QHBoxLayout()
+        layout_buttons.addStretch()
+        layout_buttons.addWidget(self.auto)
+        layout_buttons.addWidget(self.reset)
+        layout_buttons.addStretch()
 
+        layout_main = QVBoxLayout(self)
+        layout_main.addStretch()
+        layout_main.addWidget(self.image_label)
+        layout_main.addWidget(self.min)
+        layout_main.addWidget(self.max)
+        layout_main.addWidget(self.gamma)
+        layout_main.addWidget(self.contrast)
+        layout_main.addWidget(self.brightness)
+        layout_main.addLayout(layout_buttons)
+        layout_main.addStretch()
 
     def update_histogram(self):
         
@@ -127,8 +133,6 @@ class ImageControl(QWidget):
         # reset image
         self.image_transformed = self.image.copy()
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-
-
 
 class Landmarks2D(QWidget):
     def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
