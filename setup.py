@@ -12,6 +12,8 @@ setup(
     install_requires=[
         "numpy", 
         "pyqt5",
+        "pyqtgraph",
+        "opencv-python",
         "git+https://github.com/ElTinmar/qt_widgets.git@main"
     ]
 )
