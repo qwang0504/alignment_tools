@@ -156,7 +156,7 @@ class ImageControl(QWidget):
         self.histogram.clear()
         for i in range(self.num_channels):
             y, x = np.histogram(I[:,:,i].ravel(), x)
-            self.histogram.plot(x,y,stepMode="center")
+            self.histogram.plot(x,y,stepMode="center", pen=(i,3))
 
         self.image_transformed = I
 
