@@ -174,11 +174,10 @@ class Landmarks2D(QWidget):
 
         ## images
 
-        self.moving_label = QLabel(self)
-        self.fixed_label = QLabel(self)
-        self.overlay = QLabel(self)
+        self.moving_label = ImageControl(self.moving)
+        self.fixed_label = ImageControl(self.fixed)
+        self.overlay = ImageControl(0.5*(self.fixed+self.moving))
     
-
         ## 2D affine transform parameters
 
         self.scale_x = LabeledDoubleSpinBox(self)
