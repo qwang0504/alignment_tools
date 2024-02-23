@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QSlider
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor, QPixmap
 from numpy.typing import NDArray
 import numpy as np
-from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox
+from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox, LabeledSliderSpinBox
 from image_tools import im2single, im2uint8
 import pyqtgraph as pg
 
@@ -22,8 +22,16 @@ class ImageControl(QWidget):
 
         super().__init__(*args, **kwargs)
 
+        if len(image.shape) > 3:
+            raise ValueError('Cannot deal with more than 3 dimensions')
+        
+        self.num_channels = 1 if len(image.shape) == 2 else image.shape[2]
+        if self.num_channels == 1:
+            image = image[:,:,np.newaxis]
+
         self.image = im2single(image)
         self.image_transformed = self.image.copy() 
+        
         self.create_components()
         self.layout_components()
         self.update_histogram()
@@ -37,10 +45,17 @@ class ImageControl(QWidget):
 
         ## controls ----------------------------------------------
 
+        # channel: which image channel to act on
+        self.channel = LabeledSliderSpinBox(self)
+        self.channel.setText('channel')
+        self.channel.setRange(0,self.num_channels-1)
+        self.channel.setValue(1)
+        self.channel.editingFinished.connect(self.update_histogram)
+
         # contrast
         self.contrast = LabeledSliderDoubleSpinBox(self)
         self.contrast.setText('contrast')
-        self.contrast.setRange(0.01,10)
+        self.contrast.setRange(-1000,1000)
         self.contrast.setValue(1.0)
         self.contrast.editingFinished.connect(self.update_histogram)
 
@@ -99,6 +114,7 @@ class ImageControl(QWidget):
         layout_main = QVBoxLayout(self)
         layout_main.addStretch()
         layout_main.addWidget(self.image_label)
+        layout_main.addWidget(self.channel)
         layout_main.addWidget(self.min)
         layout_main.addWidget(self.max)
         layout_main.addWidget(self.gamma)
@@ -110,32 +126,42 @@ class ImageControl(QWidget):
         layout_main.addStretch()
 
     def update_histogram(self):
-        
-        # apply transform
+    
+        # get parameters
+        w = self.channel.value()
         c = self.contrast.value()
         b = self.brightness.value()
         g = self.gamma.value()
         m = self.min.value()
         M = self.max.value()
 
-        im_adjust = np.piecewise(
-            self.image, 
-            [self.image<m, (self.image>=m) & (self.image<=M), self.image>M],
-            [0, lambda x: (x-m)/(M-m), 1]
-        )
-        self.image_transformed = np.clip(c*(im_adjust**g)+b, 0 ,1)
-
-        # update image
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-        
-        # update histogram
+        # update curve
         x = np.arange(0,1,0.01)
         y = np.clip(c*(np.piecewise(x,[x<m, (x>=m) & (x<=M), x>M],[0, lambda x: (x-m)/(M-m), 1])**g)+b, 0 ,1)
         self.curve.clear()
         self.curve.plot(x,y)
-        y, x = np.histogram(self.image_transformed.ravel(), x)
+
+        # transfrom image
+        I = self.image_transformed
+
+        I[:,:,w] = np.piecewise(
+            I[:,:,w], 
+            [I[:,:,w]<m, (I[:,:,w]>=m) & (I[:,:,w]<=M), I[:,:,w]>M],
+            [0, lambda x: (x-m)/(M-m), 1]
+        )
+        
+        I[:,:,w] = np.clip(c*(I[:,:,w]**g)+b, 0 ,1)
+
+        # update histogram
         self.histogram.clear()
-        self.histogram.plot(x,y,stepMode="center")
+        for i in range(self.num_channels):
+            y, x = np.histogram(I[:,:,i].ravel(), x)
+            self.histogram.plot(x,y,stepMode="center")
+
+        self.image_transformed = I
+
+        # update image
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
 
     def auto_scale(self):
 
