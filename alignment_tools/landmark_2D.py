@@ -119,6 +119,7 @@ class ImageControl(QWidget):
         # update histogram
 
     def auto_scale(self):
+        
         m = np.percentile(self.image, 5)
         M = np.percentile(self.image, 99)
         self.min.setValue(m)
