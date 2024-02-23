@@ -142,7 +142,7 @@ class ImageControl(QWidget):
         self.curve.plot(x,y)
 
         # transfrom image
-        I = self.image_transformed
+        I = self.image.copy()
 
         I[:,:,w] = np.piecewise(
             I[:,:,w], 
