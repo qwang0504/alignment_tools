@@ -119,6 +119,11 @@ class ImageControl(QWidget):
         # update histogram
 
     def auto_scale(self):
+        m = np.percentile(self.image, 5)
+        M = np.percentile(self.image, 99)
+        self.min.setValue(m)
+        self.max.setValue(M)
+        self.update_histogram()
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
     
     def reset_transform(self):
