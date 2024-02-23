@@ -17,7 +17,6 @@ class ImageControl(QWidget):
     '''
 
     # TODO be able to reorganize widgets vertically to change the order of operations
-    # TODO store and restore settings on channel change 
 
     def __init__(self, image: NDArray, *args, **kwargs):
 
@@ -32,6 +31,14 @@ class ImageControl(QWidget):
 
         self.image = im2single(image)
         self.image_transformed = self.image.copy() 
+
+        self.state = {
+            'contrast': [1.0 for i in range(self.num_channels)],
+            'brightness': [0.0 for i in range(self.num_channels)],
+            'gamma': [1.0 for i in range(self.num_channels)],
+            'min': [0.0 for i in range(self.num_channels)],
+            'max': [1.0 for i in range(self.num_channels)]
+        }
         
         self.create_components()
         self.layout_components()
@@ -50,43 +57,43 @@ class ImageControl(QWidget):
         self.channel = LabeledSliderSpinBox(self)
         self.channel.setText('channel')
         self.channel.setRange(0,self.num_channels-1)
-        self.channel.setValue(1)
-        self.channel.editingFinished.connect(self.update_histogram)
+        self.channel.setValue(0)
+        self.channel.valueChanged.connect(self.change_channel)
 
         # contrast
         self.contrast = LabeledSliderDoubleSpinBox(self)
         self.contrast.setText('contrast')
         self.contrast.setRange(0,10)
         self.contrast.setValue(1.0)
-        self.contrast.editingFinished.connect(self.update_histogram)
+        self.contrast.valueChanged.connect(self.update_histogram)
 
         # brightness
         self.brightness = LabeledSliderDoubleSpinBox(self)
         self.brightness.setText('brightness')
         self.brightness.setRange(-1,1)
         self.brightness.setValue(0.0)
-        self.brightness.editingFinished.connect(self.update_histogram)
+        self.brightness.valueChanged.connect(self.update_histogram)
 
         # gamma
         self.gamma = LabeledSliderDoubleSpinBox(self)
         self.gamma.setText('gamma')
         self.gamma.setRange(0,10)
         self.gamma.setValue(1.0)
-        self.gamma.editingFinished.connect(self.update_histogram)
+        self.gamma.valueChanged.connect(self.update_histogram)
 
         # min
         self.min = LabeledSliderDoubleSpinBox(self)
         self.min.setText('min')
         self.min.setRange(0,1)
         self.min.setValue(0.0)
-        self.min.editingFinished.connect(self.update_histogram)
+        self.min.valueChanged.connect(self.update_histogram)
 
         # max
         self.max = LabeledSliderDoubleSpinBox(self)
         self.max.setText('max')
         self.max.setRange(0,1)
         self.max.setValue(1.0)
-        self.max.editingFinished.connect(self.update_histogram)
+        self.max.valueChanged.connect(self.update_histogram)
 
         ## histogram and curve: total transformation applied to pixel values -------
         self.curve = pg.plot()
@@ -126,6 +133,18 @@ class ImageControl(QWidget):
         layout_main.addLayout(layout_buttons)
         layout_main.addStretch()
 
+    def change_channel(self):
+
+        # restore channel state 
+        w = self.channel.value()
+        self.contrast.setValue(self.state['contrast'][w])
+        self.brightness.setValue(self.state['brightness'][w])
+        self.gamma.setValue(self.state['gamma'][w])
+        self.min.setValue(self.state['min'][w])
+        self.max.setValue(self.state['max'][w])
+
+        self.update_histogram()
+
     def update_histogram(self):
     
         # get parameters
@@ -135,6 +154,12 @@ class ImageControl(QWidget):
         g = self.gamma.value()
         m = self.min.value()
         M = self.max.value()
+
+        self.state['contrast'][w] = c
+        self.state['brightness'][w] = b
+        self.state['gamma'][w] = g
+        self.state['min'][w] = m
+        self.state['max'][w] = M
 
         # update curve
         x = np.arange(0,1,0.01)
@@ -174,7 +199,16 @@ class ImageControl(QWidget):
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
     
     def reset_transform(self):
-
+        
+        # reset state
+        self.state = {
+            'contrast': [1.0 for i in range(self.num_channels)],
+            'brightness': [0.0 for i in range(self.num_channels)],
+            'gamma': [1.0 for i in range(self.num_channels)],
+            'min': [0.0 for i in range(self.num_channels)],
+            'max': [1.0 for i in range(self.num_channels)]
+        }
+                
         # reset parameters
         self.contrast.setValue(1.0)
         self.brightness.setValue(0.0)
@@ -211,43 +245,43 @@ class AlignAffine2D(QWidget):
         self.scale_x.setText('scale x')
         self.scale_x.setRange(-1000,1000)
         self.scale_x.setValue(1)
-        self.scale_x.editingFinished.connect(self.update_transfromation)
+        self.scale_x.valueChanged.connect(self.update_transfromation)
 
         self.scale_y = LabeledDoubleSpinBox(self)
         self.scale_y.setText('scale x')
         self.scale_y.setRange(-1000,1000)
         self.scale_y.setValue(1)
-        self.scale_y.editingFinished.connect(self.update_transfromation)
+        self.scale_y.valueChanged.connect(self.update_transfromation)
 
         self.shear_x = LabeledDoubleSpinBox(self)
         self.shear_x.setText('scale x')
         self.shear_x.setRange(-1000,1000)
         self.shear_x.setValue(1)
-        self.shear_x.editingFinished.connect(self.update_transfromation)
+        self.shear_x.valueChanged.connect(self.update_transfromation)
 
         self.shear_y = LabeledDoubleSpinBox(self)
         self.shear_y.setText('scale x')
         self.shear_y.setRange(-1000,1000)
         self.shear_y.setValue(1)
-        self.shear_y.editingFinished.connect(self.update_transfromation)
+        self.shear_y.valueChanged.connect(self.update_transfromation)
 
         self.rotation = LabeledDoubleSpinBox(self)
         self.rotation.setText('scale x')
         self.rotation.setRange(-1000,1000)
         self.rotation.setValue(1)
-        self.rotation.editingFinished.connect(self.update_transfromation)
+        self.rotation.valueChanged.connect(self.update_transfromation)
 
         self.translate_x = LabeledDoubleSpinBox(self)
         self.translate_x.setText('scale x')
         self.translate_x.setRange(-1000,1000)
         self.translate_x.setValue(1)
-        self.translate_x.editingFinished.connect(self.update_transfromation)
+        self.translate_x.valueChanged.connect(self.update_transfromation)
 
         self.translate_y = LabeledDoubleSpinBox(self)
         self.translate_y.setText('scale x')
         self.translate_y.setRange(-1000,1000)
         self.translate_y.setValue(1)
-        self.translate_y.editingFinished.connect(self.update_transfromation)
+        self.translate_y.valueChanged.connect(self.update_transfromation)
 
         self.transformation_groupbox = QGroupBox('Parameters:')
 
