@@ -4,7 +4,7 @@ from PyQt5.QtGui import QColor, QPixmap
 from numpy.typing import NDArray
 import numpy as np
 from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox
-from image_tools import im2single
+from image_tools import im2single, im2uint8
 
 # TODO: this probably belongs in image tools
 class ImageControl(QWidget):
@@ -30,7 +30,7 @@ class ImageControl(QWidget):
 
         ## image -------------------------------------------------
         self.image_label = QLabel(self)
-        self.image_label.setPixmap(NDarray_to_QPixmap(self.image_transformed))
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
 
         ## controls ----------------------------------------------
 
@@ -38,35 +38,35 @@ class ImageControl(QWidget):
         self.contrast = LabeledSliderDoubleSpinBox(self)
         self.contrast.setText('contrast')
         self.contrast.setRange(0.01,10)
-        self.contrast.value(1.0)
+        self.contrast.setValue(1.0)
         self.contrast.editingFinished.connect(self.update_histogram)
 
         # brightness
         self.brightness = LabeledSliderDoubleSpinBox(self)
         self.brightness.setText('brightness')
         self.brightness.setRange(-1,1)
-        self.brightness.value(0.0)
+        self.brightness.setValue(0.0)
         self.brightness.editingFinished.connect(self.update_histogram)
 
         # gamma
         self.gamma = LabeledSliderDoubleSpinBox(self)
         self.gamma.setText('gamma')
         self.gamma.setRange(0,10)
-        self.gamma.value(1.0)
+        self.gamma.setValue(1.0)
         self.gamma.editingFinished.connect(self.update_histogram)
 
         # min
         self.min = LabeledSliderDoubleSpinBox(self)
         self.min.setText('min')
         self.min.setRange(0,1)
-        self.min.value(0.0)
+        self.min.setValue(0.0)
         self.min.editingFinished.connect(self.update_histogram)
 
         # max
         self.max = LabeledSliderDoubleSpinBox(self)
         self.max.setText('max')
         self.max.setRange(0,1)
-        self.max.value(1.0)
+        self.max.setValue(1.0)
         self.max.editingFinished.connect(self.update_histogram)
 
         ## curve: total transformation applied to pixel values -------
@@ -108,12 +108,12 @@ class ImageControl(QWidget):
         self.image_transformed = c*(np.clip(self.image, m, M)**g)+b
 
         # update image
-        self.image_label.setPixmap(NDarray_to_QPixmap(self.image_transformed))
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
         
         # update histogram
 
     def auto_scale(self):
-        self.image_label.setPixmap(NDarray_to_QPixmap(self.image_transformed))
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
     
     def reset_transform(self):
 
@@ -126,7 +126,7 @@ class ImageControl(QWidget):
 
         # reset image
         self.image_transformed = self.image.copy()
-        self.image_label.setPixmap(NDarray_to_QPixmap(self.image_transformed))
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
 
 
 
