@@ -55,7 +55,7 @@ class ImageControl(QWidget):
         # contrast
         self.contrast = LabeledSliderDoubleSpinBox(self)
         self.contrast.setText('contrast')
-        self.contrast.setRange(-1000,1000)
+        self.contrast.setRange(0,10)
         self.contrast.setValue(1.0)
         self.contrast.editingFinished.connect(self.update_histogram)
 
@@ -91,7 +91,7 @@ class ImageControl(QWidget):
         self.curve = pg.plot()
         self.curve.setYRange(0,1)
         self.histogram = pg.plot()
-        self.histogram.setMinimumHeight(200)
+        self.histogram.setMinimumHeight(150)
 
         ## auto: make the histogram flat 
         self.auto = QPushButton(self)
@@ -142,23 +142,23 @@ class ImageControl(QWidget):
         self.curve.plot(x,y)
 
         # transfrom image
-        I = self.image.copy()
+        I = self.image[:,:,w].copy()
 
-        I[:,:,w] = np.piecewise(
-            I[:,:,w], 
-            [I[:,:,w]<m, (I[:,:,w]>=m) & (I[:,:,w]<=M), I[:,:,w]>M],
+        I = np.piecewise(
+            I, 
+            [I<m, (I>=m) & (I<=M), I>M],
             [0, lambda x: (x-m)/(M-m), 1]
         )
         
-        I[:,:,w] = np.clip(c*(I[:,:,w]**g)+b, 0 ,1)
+        I = np.clip(c*(I**g)+b, 0 ,1)
+
+        self.image_transformed[:,:,w] = I
 
         # update histogram
         self.histogram.clear()
         for i in range(self.num_channels):
-            y, x = np.histogram(I[:,:,i].ravel(), x)
+            y, x = np.histogram(self.image_transformed[:,:,i].ravel(), x)
             self.histogram.plot(x,y,stepMode="center", pen=(i,3))
-
-        self.image_transformed = I
 
         # update image
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
