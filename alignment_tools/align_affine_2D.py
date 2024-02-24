@@ -17,7 +17,6 @@ class ImageControl(QWidget):
     '''
 
     # TODO be able to reorganize widgets vertically to change the order of operations
-    # TODO make sure min < max and handle (that probably means writing separate callbacks for each param)
     # TODO c&b and min/max not independent, change them both
 
     def __init__(self, image: NDArray, *args, **kwargs):
@@ -67,35 +66,40 @@ class ImageControl(QWidget):
         self.contrast.setText('contrast')
         self.contrast.setRange(0,10)
         self.contrast.setValue(1.0)
-        self.contrast.valueChanged.connect(self.update_histogram)
+        self.contrast.setSingleStep(0.05)
+        self.contrast.valueChanged.connect(self.change_contrast)
 
         # brightness
         self.brightness = LabeledSliderDoubleSpinBox(self)
         self.brightness.setText('brightness')
         self.brightness.setRange(-1,1)
         self.brightness.setValue(0.0)
-        self.brightness.valueChanged.connect(self.update_histogram)
+        self.brightness.setSingleStep(0.05)
+        self.brightness.valueChanged.connect(self.change_brightness)
 
         # gamma
         self.gamma = LabeledSliderDoubleSpinBox(self)
         self.gamma.setText('gamma')
         self.gamma.setRange(0,10)
         self.gamma.setValue(1.0)
-        self.gamma.valueChanged.connect(self.update_histogram)
+        self.gamma.setSingleStep(0.05)
+        self.gamma.valueChanged.connect(self.change_gamma)
 
         # min
         self.min = LabeledSliderDoubleSpinBox(self)
         self.min.setText('min')
         self.min.setRange(0,1)
         self.min.setValue(0.0)
-        self.min.valueChanged.connect(self.update_histogram)
+        self.min.setSingleStep(0.05)
+        self.min.valueChanged.connect(self.change_min)
 
         # max
         self.max = LabeledSliderDoubleSpinBox(self)
         self.max.setText('max')
         self.max.setRange(0,1)
         self.max.setValue(1.0)
-        self.max.valueChanged.connect(self.update_histogram)
+        self.max.setSingleStep(0.05)
+        self.max.valueChanged.connect(self.change_max)
 
         ## histogram and curve: total transformation applied to pixel values -------
         self.curve = pg.plot()
@@ -145,6 +149,35 @@ class ImageControl(QWidget):
         self.min.setValue(self.state['min'][w])
         self.max.setValue(self.state['max'][w])
 
+        self.update_histogram()
+
+    def change_brightness(self):
+        self.update_histogram()
+
+    def change_contrast(self):
+        self.update_histogram()
+
+    def change_gamma(self):
+        self.update_histogram()
+
+    def change_min(self):
+
+        w = self.channel.value()
+        
+        # if min >= max restore old value 
+        if self.min.value() >= self.max.value():
+            self.min.setValue(self.state['min'][w])
+            
+        self.update_histogram()
+
+    def change_max(self):
+
+        w = self.channel.value()
+        
+        # if min >= max restore old value 
+        if self.min.value() >= self.max.value():
+            self.max.setValue(self.state['max'][w])
+    
         self.update_histogram()
 
     def update_histogram(self):
