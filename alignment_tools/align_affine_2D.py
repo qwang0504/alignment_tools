@@ -64,7 +64,7 @@ class ImageControl(QWidget):
         # contrast
         self.contrast = LabeledSliderDoubleSpinBox(self)
         self.contrast.setText('contrast')
-        self.contrast.setRange(0,100)
+        self.contrast.setRange(0,10)
         self.contrast.setValue(1.0)
         self.contrast.setSingleStep(0.05)
         self.contrast.valueChanged.connect(self.change_contrast)
