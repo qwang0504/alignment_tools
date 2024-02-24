@@ -18,6 +18,7 @@ class ImageControl(QWidget):
 
     # TODO be able to reorganize widgets vertically to change the order of operations
     # TODO c&b and min/max not independent, change them both
+    # TODO change between simple and expert (hide curves)
 
     def __init__(self, image: NDArray, *args, **kwargs):
 
