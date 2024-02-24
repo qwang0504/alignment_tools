@@ -198,7 +198,7 @@ class ImageControl(QWidget):
 
         # update curve
         x = np.arange(0,1,0.01)
-        y = np.clip(c*(np.piecewise(x,[x<m, (x>=m) & (x<=M), x>M],[0, lambda x: (x-m)/(M-m), 1])**g)+b, 0 ,1)
+        y = np.clip(c*(np.piecewise(x,[x<m, (x>=m) & (x<=M), x>M],[0, lambda x: (x-m)/(M-m), 1])**g-0.5)+0.5+b, 0 ,1)
         self.curve.clear()
         self.curve.plot(x,y)
 
@@ -211,7 +211,7 @@ class ImageControl(QWidget):
             [0, lambda x: (x-m)/(M-m), 1]
         )
         
-        I = np.clip(c*(I**g)+b, 0 ,1)
+        I = np.clip(c*(I**g-0.5)+b+0.5, 0 ,1)
 
         self.image_transformed[:,:,w] = I
 
