@@ -6,6 +6,6 @@ import cv2
 IMAGE = 'toy_data/image_00.jpg'
 
 app = QApplication(sys.argv)
-window = ImageControl(cv2.imread(IMAGE))
+window = ImageControl(cv2.imread(IMAGE)[:,:,0])
 window.show()
 app.exec()
