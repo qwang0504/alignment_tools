@@ -7,6 +7,8 @@ from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDo
 from image_tools import im2single, im2uint8
 import pyqtgraph as pg
 
+# https://github.com/pyqtgraph/pyqtgraph/blob/master/pyqtgraph/examples
+
 # TODO: this probably belongs in image tools
 class ImageControl(QWidget):
     '''
