@@ -24,12 +24,13 @@ class ImageControl(QWidget):
     # TODO change between simple and expert (hide curves)
     # TODO zoom on mouse wheel 
 
-    def __init__(self, image: NDArray, *args, **kwargs):
+    def __init__(self, image: NDArray, expert_mode: bool = False, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
         self.set_image(image)
 
+        self.expert_mode = expert_mode
         self.state = {
             'contrast': [1.0 for i in range(self.num_channels)],
             'brightness': [0.0 for i in range(self.num_channels)],
@@ -126,6 +127,10 @@ class ImageControl(QWidget):
         self.reset = QPushButton(self)
         self.reset.setText('Reset')
         self.reset.clicked.connect(self.reset_transform)
+
+        if not self.expert_mode:
+            self.curve.hide()
+            self.histogram.hide()
 
     def layout_components(self):
 
