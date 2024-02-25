@@ -268,6 +268,8 @@ class ImageControl(QWidget):
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
         self.update_histogram()
 
+def l2(p: QPoint)-> float :
+    return np.sqrt(p.x()**2 + p.y()**2)
 
 class ImageControlCP(ImageControl):
 
@@ -294,24 +296,25 @@ class ImageControlCP(ImageControl):
         offset = QPoint(5,-5)
         for cp in self.control_points:
             painter.drawPoint(cp[0])
-            painter.drawText(cp[0]+offset, cp[1])
+            painter.drawText(cp[0]+offset, str(cp[1]))
 
     def on_mouse_press(self, event):
 
         # left-click adds a new control point
         if event.button() == Qt.LeftButton:
 
-            num = len(self.control_points) 
+            num = 0 if not self.control_points else max(self.control_points, key=lambda x: x[1])[1] + 1
             pos = event.pos()
-            self.control_points.append((pos, str(num)))
+            self.control_points.append((pos, num))
 
         # right-click deletes the closest control point
         elif event.button() == Qt.RightButton:
             
             # get closest point and delete from list of points
-
-            # delete point annotation from image 
-            pass
+            distances = [l2(event.pos() - pos) for (pos, name) in self.control_points]
+            if distances:
+                closest_point = np.argmin(distances)
+                self.control_points.pop(closest_point)
 
         self.update()
 
