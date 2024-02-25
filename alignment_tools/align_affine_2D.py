@@ -282,7 +282,9 @@ class ImageControlCP(ImageControl):
         
         super().__init__(image, *args, **kwargs)
         self.control_points = []
+        self.zoom = 0
         self.image_label.mousePressEvent = self.on_mouse_press
+        self.image_label.wheelEvent = self.on_mouse_wheel
 
 
     def paintEvent(self, event):
@@ -302,6 +304,12 @@ class ImageControlCP(ImageControl):
         for cp in self.control_points:
             painter.drawPoint(cp[0])
             painter.drawText(cp[0]+offset, str(cp[1]))
+
+    def on_mouse_wheel(self, event):
+        delta = event.angleDelta().y()
+        pos = event.position()
+        self.zoom += (delta and delta // abs(delta))
+        print(self.zoom, pos)
 
     def on_mouse_press(self, event):
 
