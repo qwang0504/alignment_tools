@@ -106,9 +106,10 @@ class ImageControl(QWidget):
 
         ## histogram and curve: total transformation applied to pixel values -------
         self.curve = pg.plot()
+        self.curve.setFixedHeight(100)
         self.curve.setYRange(0,1)
         self.histogram = pg.plot()
-        self.histogram.setMinimumHeight(150)
+        self.histogram.setFixedHeight(150)
 
         ## auto: make the histogram flat 
         self.auto = QPushButton(self)
@@ -273,6 +274,8 @@ class AlignAffine2D(QWidget):
 
         self.moving = moving
         self.fixed = fixed
+        self.moving_transformed = np.zeros_like(self.fixed)
+        self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
         self.create_components()
         self.layout_components()
 
@@ -282,7 +285,7 @@ class AlignAffine2D(QWidget):
 
         self.moving_label = ImageControl(self.moving)
         self.fixed_label = ImageControl(self.fixed)
-        self.overlay = ImageControl(0.5*(self.fixed+self.moving))
+        self.overlay_label = ImageControl(self.overlay)
     
         ## 2D affine transform parameters
 
@@ -290,50 +293,59 @@ class AlignAffine2D(QWidget):
         self.scale_x.setText('scale x')
         self.scale_x.setRange(-1000,1000)
         self.scale_x.setValue(1)
-        self.scale_x.valueChanged.connect(self.update_transfromation)
+        self.scale_x.valueChanged.connect(self.update_transformation)
 
         self.scale_y = LabeledDoubleSpinBox(self)
-        self.scale_y.setText('scale x')
+        self.scale_y.setText('scale y')
         self.scale_y.setRange(-1000,1000)
         self.scale_y.setValue(1)
-        self.scale_y.valueChanged.connect(self.update_transfromation)
+        self.scale_y.valueChanged.connect(self.update_transformation)
 
         self.shear_x = LabeledDoubleSpinBox(self)
-        self.shear_x.setText('scale x')
+        self.shear_x.setText('shear x')
         self.shear_x.setRange(-1000,1000)
         self.shear_x.setValue(1)
-        self.shear_x.valueChanged.connect(self.update_transfromation)
+        self.shear_x.valueChanged.connect(self.update_transformation)
 
         self.shear_y = LabeledDoubleSpinBox(self)
-        self.shear_y.setText('scale x')
+        self.shear_y.setText('shear y')
         self.shear_y.setRange(-1000,1000)
         self.shear_y.setValue(1)
-        self.shear_y.valueChanged.connect(self.update_transfromation)
+        self.shear_y.valueChanged.connect(self.update_transformation)
 
         self.rotation = LabeledDoubleSpinBox(self)
-        self.rotation.setText('scale x')
+        self.rotation.setText('rotate (deg)')
         self.rotation.setRange(-1000,1000)
         self.rotation.setValue(1)
-        self.rotation.valueChanged.connect(self.update_transfromation)
+        self.rotation.valueChanged.connect(self.update_transformation)
 
         self.translate_x = LabeledDoubleSpinBox(self)
-        self.translate_x.setText('scale x')
+        self.translate_x.setText('translate x')
         self.translate_x.setRange(-1000,1000)
         self.translate_x.setValue(1)
-        self.translate_x.valueChanged.connect(self.update_transfromation)
+        self.translate_x.valueChanged.connect(self.update_transformation)
 
         self.translate_y = LabeledDoubleSpinBox(self)
-        self.translate_y.setText('scale x')
+        self.translate_y.setText('translate y')
         self.translate_y.setRange(-1000,1000)
         self.translate_y.setValue(1)
-        self.translate_y.valueChanged.connect(self.update_transfromation)
+        self.translate_y.valueChanged.connect(self.update_transformation)
 
         self.transformation_groupbox = QGroupBox('Parameters:')
+        
+        self.transform = QWidget(self)
+
+        self.align_cp = QPushButton(self)
+        self.align_cp.setText('Align with control points')
+        self.align_cp.clicked.connect(self.align_control_points)
+
+        self.align_auto = QPushButton(self)
+        self.align_auto.setText('Align automatically')
+        self.align_auto.clicked.connect(self.align_automatically)
 
     def layout_components(self):
         
         layout_params = QVBoxLayout(self.transformation_groupbox)
-        layout_params.addStretch()
         layout_params.addWidget(self.scale_x)
         layout_params.addWidget(self.scale_y)
         layout_params.addWidget(self.shear_x)
@@ -341,11 +353,26 @@ class AlignAffine2D(QWidget):
         layout_params.addWidget(self.rotation)
         layout_params.addWidget(self.translate_x)
         layout_params.addWidget(self.translate_y)
+        layout_params.addWidget(self.align_cp)
+        layout_params.addWidget(self.align_auto)
         layout_params.addStretch()
 
-                
-        self.tabs = QTabWidget()
-        self.tabs.addTab()
+        layout_fixed_moving = QHBoxLayout(self.transform)
+        layout_fixed_moving.addStretch()
+        layout_fixed_moving.addWidget(self.fixed_label)
+        layout_fixed_moving.addWidget(self.moving_label)
+        layout_fixed_moving.addWidget(self.transformation_groupbox)
+        layout_fixed_moving.addStretch()
 
-    def update_transfromation(self):
+        self.tabs = QTabWidget(self)
+        self.tabs.addTab(self.transform, "transform")
+        self.tabs.addTab(self.overlay_label, "overlay")
+
+    def update_transformation(self):
+        pass
+
+    def align_control_points(self):
+        pass
+
+    def align_automatically(self):
         pass
