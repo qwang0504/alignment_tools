@@ -368,6 +368,9 @@ class AlignAffine2D(QWidget):
         self.tabs.addTab(self.transform, "transform")
         self.tabs.addTab(self.overlay_label, "overlay")
 
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.tabs)
+
     def update_transformation(self):
         pass
 
