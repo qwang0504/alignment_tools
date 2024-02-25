@@ -315,6 +315,7 @@ class ImageControlCP(ImageControl):
         print(self.zoom, pos)
 
     def on_mouse_press(self, event):
+        # TODO maybe put this in parent class
 
         # left-click adds a new control point
         if event.button() == Qt.LeftButton:
