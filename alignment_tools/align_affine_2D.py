@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QSlider
-from PyQt5.QtCore import Qt, pyqtSlot, QTimer, pyqtSignal
-from PyQt5.QtGui import QColor, QPixmap
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
 from numpy.typing import NDArray
 import numpy as np
 from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox, LabeledSliderSpinBox
@@ -267,6 +267,52 @@ class ImageControl(QWidget):
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
         self.update_histogram()
 
+
+class ImageControlCP(ImageControl):
+
+    def __init__(self, image: NDArray, *args, **kwargs):
+        
+        super().__init__(image, *args, **kwargs)
+        self.control_points = []
+        self.image_label.mousePressEvent = self.on_mouse_press
+
+
+    def paintEvent(self, event):
+
+        # redraw over image
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        painter = QPainter(self.image_label.pixmap())
+        pen = QPen()
+        pen.setWidth(3)
+        for cp in self.control_points:
+            pen_color = QColor(70, 0, 0, 60)
+            brush_color = QColor(100, 10, 10, 40) 
+            pen.setColor(pen_color)
+            brush = QBrush(brush_color)  
+            painter.setPen(pen)
+            painter.setBrush(brush)   
+            painter.drawText(cp[0], cp[1])
+
+    def on_mouse_press(self, event):
+
+        # left-click adds a new control point
+        if event.button() == Qt.LeftButton:
+
+            num = len(self.control_points) 
+            pos = event.pos()
+            self.control_points.append((pos, str(num)))
+
+        # right-click deletes the closest control point
+        elif event.button() == Qt.RightButton:
+            
+            # get closest point and delete from list of points
+
+            # delete point annotation from image 
+            pass
+
+        self.update()
+
+
 class AlignAffine2D(QWidget):
     def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
         
@@ -379,3 +425,8 @@ class AlignAffine2D(QWidget):
 
     def align_automatically(self):
         pass
+
+
+
+# TODO make a class that inherits from ImageControl and defines the QLabel mouse callback function
+# cf image tools roi selector widget    
