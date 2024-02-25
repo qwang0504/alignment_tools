@@ -443,8 +443,3 @@ class AlignAffine2D(QWidget):
 
     def align_automatically(self):
         pass
-
-
-
-# TODO make a class that inherits from ImageControl and defines the QLabel mouse callback function
-# cf image tools roi selector widget    
