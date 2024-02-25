@@ -335,8 +335,8 @@ class AlignAffine2D(QWidget):
 
         ## images
 
-        self.moving_label = ImageControl(self.moving)
-        self.fixed_label = ImageControl(self.fixed)
+        self.moving_label = ImageControlCP(self.moving)
+        self.fixed_label = ImageControlCP(self.fixed)
         self.overlay_label = ImageControl(self.overlay)
     
         ## 2D affine transform parameters
@@ -427,7 +427,9 @@ class AlignAffine2D(QWidget):
         pass
 
     def align_control_points(self):
-        pass
+        a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
+        b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
+        print(np.linalg.lstsq(a,b, rcond=None))
 
     def align_automatically(self):
         pass
