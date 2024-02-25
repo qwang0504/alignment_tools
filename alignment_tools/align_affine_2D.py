@@ -471,7 +471,7 @@ class AlignAffine2D(QWidget):
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
         T = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
 
-        # sc_x/sc_y = T[0,0]/T[1,1]
+        # TODO extract param value: this is a bit hard
 
         self.update_overlay(T)
 
