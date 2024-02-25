@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QSlider
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
 import numpy as np
 from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox, LabeledSliderSpinBox
@@ -284,14 +284,16 @@ class ImageControlCP(ImageControl):
         painter = QPainter(self.image_label.pixmap())
         pen = QPen()
         pen.setWidth(3)
+        font = QFont()
+        font.setPixelSize(30)
+        pen_color = QColor(255, 0, 0, 255)
+        pen.setColor(pen_color)
+        painter.setPen(pen)
+        painter.setFont(font)
+        offset = QPoint(5,-5)
         for cp in self.control_points:
-            pen_color = QColor(70, 0, 0, 60)
-            brush_color = QColor(100, 10, 10, 40) 
-            pen.setColor(pen_color)
-            brush = QBrush(brush_color)  
-            painter.setPen(pen)
-            painter.setBrush(brush)   
-            painter.drawText(cp[0], cp[1])
+            painter.drawPoint(cp[0])
+            painter.drawText(cp[0]+offset, cp[1])
 
     def on_mouse_press(self, event):
 
