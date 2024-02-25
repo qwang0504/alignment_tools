@@ -6,6 +6,7 @@ import numpy as np
 from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox, LabeledSliderSpinBox
 from image_tools import im2single, im2uint8
 import pyqtgraph as pg
+import cv2
 
 # https://github.com/pyqtgraph/pyqtgraph/blob/master/pyqtgraph/examples
 
@@ -27,15 +28,7 @@ class ImageControl(QWidget):
 
         super().__init__(*args, **kwargs)
 
-        if len(image.shape) > 3:
-            raise ValueError('Cannot deal with more than 3 dimensions')
-        
-        self.num_channels = 1 if len(image.shape) == 2 else image.shape[2]
-        if self.num_channels == 1:
-            image = image[:,:,np.newaxis]
-
-        self.image = im2single(image)
-        self.image_transformed = self.image.copy() 
+        self.set_image(image)
 
         self.state = {
             'contrast': [1.0 for i in range(self.num_channels)],
@@ -49,6 +42,18 @@ class ImageControl(QWidget):
         self.layout_components()
         self.update_histogram()
         self.setMaximumWidth(image.shape[1])
+
+    def set_image(self, image: NDArray):
+
+        if len(image.shape) > 3:
+            raise ValueError('Cannot deal with more than 3 dimensions')
+        
+        self.num_channels = 1 if len(image.shape) == 2 else image.shape[2]
+        if self.num_channels == 1:
+            image = image[:,:,np.newaxis]
+
+        self.image = im2single(image)
+        self.image_transformed = self.image.copy() 
 
     def create_components(self):
 
@@ -429,7 +434,12 @@ class AlignAffine2D(QWidget):
     def align_control_points(self):
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
-        print(np.linalg.lstsq(a,b, rcond=None))
+        T = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
+
+        self.moving_transformed = cv2.warpAffine(self.moving, T[:2,:], self.fixed.shape)
+        self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
+        self.overlay_label.set_image(self.overlay)
+        self.overlay_label.reset_transform()
 
     def align_automatically(self):
         pass
