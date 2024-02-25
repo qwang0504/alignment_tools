@@ -349,43 +349,43 @@ class AlignAffine2D(QWidget):
         self.scale_x = LabeledDoubleSpinBox(self)
         self.scale_x.setText('scale x')
         self.scale_x.setRange(-1000,1000)
-        self.scale_x.setValue(1)
+        self.scale_x.setValue(1.0)
         self.scale_x.valueChanged.connect(self.update_transformation)
 
         self.scale_y = LabeledDoubleSpinBox(self)
         self.scale_y.setText('scale y')
         self.scale_y.setRange(-1000,1000)
-        self.scale_y.setValue(1)
+        self.scale_y.setValue(1.0)
         self.scale_y.valueChanged.connect(self.update_transformation)
 
         self.shear_x = LabeledDoubleSpinBox(self)
         self.shear_x.setText('shear x')
         self.shear_x.setRange(-1000,1000)
-        self.shear_x.setValue(1)
+        self.shear_x.setValue(0.0)
         self.shear_x.valueChanged.connect(self.update_transformation)
 
         self.shear_y = LabeledDoubleSpinBox(self)
         self.shear_y.setText('shear y')
         self.shear_y.setRange(-1000,1000)
-        self.shear_y.setValue(1)
+        self.shear_y.setValue(0.0)
         self.shear_y.valueChanged.connect(self.update_transformation)
 
         self.rotation = LabeledDoubleSpinBox(self)
         self.rotation.setText('rotate (deg)')
-        self.rotation.setRange(-1000,1000)
-        self.rotation.setValue(1)
+        self.rotation.setRange(-100_000,100_000)
+        self.rotation.setValue(0)
         self.rotation.valueChanged.connect(self.update_transformation)
 
         self.translate_x = LabeledDoubleSpinBox(self)
         self.translate_x.setText('translate x')
-        self.translate_x.setRange(-1000,1000)
-        self.translate_x.setValue(1)
+        self.translate_x.setRange(-100_000,100_000)
+        self.translate_x.setValue(0.0)
         self.translate_x.valueChanged.connect(self.update_transformation)
 
         self.translate_y = LabeledDoubleSpinBox(self)
         self.translate_y.setText('translate y')
-        self.translate_y.setRange(-1000,1000)
-        self.translate_y.setValue(1)
+        self.translate_y.setRange(-100_000,100_000)
+        self.translate_y.setValue(0.0)
         self.translate_y.valueChanged.connect(self.update_transformation)
 
         self.transformation_groupbox = QGroupBox('Parameters:')
@@ -428,18 +428,49 @@ class AlignAffine2D(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.tabs)
 
+    def update_overlay(self, T: NDArray):
+
+        self.moving_transformed = cv2.warpAffine(self.moving, T[:2,:], self.fixed.shape)
+        self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
+        self.overlay_label.set_image(self.overlay)
+        self.overlay_label.reset_transform()
+
     def update_transformation(self):
-        pass
+        
+        sh_x = self.shear_x.value()
+        sh_y = self.shear_y.value()
+        c = np.cos(np.deg2rad(self.rotation.value()))
+        s = np.sin(np.deg2rad(self.rotation.value()))
+        t_x = self.translate_x.value()
+        t_y = self.translate_y.value()
+        sc_x = self.scale_x.value()
+        sc_y = self.scale_y.value()
+
+        Shear = np.array([[ 1.0, sh_x,   0],
+                          [sh_y,  1.0,   0],
+                          [   0,    0, 1.0]])
+        
+        Rotation = np.array([[c, -s,   0],
+                             [s,  c,   0],
+                             [0,  0, 1.0]])
+        
+        Translation = np.array([[1.0,   0, t_x],
+                                [0,   1.0, t_y],
+                                [0,     0, 1.0]])
+        
+        Scale = np.array([[sc_x,    0,   0],
+                          [0,    sc_y,   0],
+                          [0,       0, 1.0]])
+
+        T = Shear @ Scale @ Rotation @ Translation
+        self.update_overlay(T)
 
     def align_control_points(self):
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
         T = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
 
-        self.moving_transformed = cv2.warpAffine(self.moving, T[:2,:], self.fixed.shape)
-        self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
-        self.overlay_label.set_image(self.overlay)
-        self.overlay_label.reset_transform()
+        self.update_overlay(T)
 
     def align_automatically(self):
         pass
