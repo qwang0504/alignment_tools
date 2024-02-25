@@ -166,9 +166,11 @@ class ImageControl(QWidget):
     def change_min(self):
 
         w = self.channel.value()
-        
+        m = self.min.value() 
+        M = self.max.value()
+
         # if min >= max restore old value 
-        if self.min.value() >= self.max.value():
+        if m >= M:
             self.min.setValue(self.state['min'][w])
             
         self.update_histogram()
@@ -176,9 +178,11 @@ class ImageControl(QWidget):
     def change_max(self):
 
         w = self.channel.value()
-        
+        m = self.min.value() 
+        M = self.max.value()
+
         # if min >= max restore old value 
-        if self.min.value() >= self.max.value():
+        if m >= M:
             self.max.setValue(self.state['max'][w])
     
         self.update_histogram()
@@ -192,6 +196,9 @@ class ImageControl(QWidget):
         g = self.gamma.value()
         m = self.min.value()
         M = self.max.value()
+        
+        #c = 1/(M - m)
+        #b = 0.5 - m + 0.5*(M-m) 
 
         self.state['contrast'][w] = c
         self.state['brightness'][w] = b
