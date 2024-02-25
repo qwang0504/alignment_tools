@@ -466,9 +466,12 @@ class AlignAffine2D(QWidget):
         self.update_overlay(T)
 
     def align_control_points(self):
+
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
         T = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
+
+        # sc_x/sc_y = T[0,0]/T[1,1]
 
         self.update_overlay(T)
 
