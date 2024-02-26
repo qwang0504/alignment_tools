@@ -317,18 +317,25 @@ class ImageControlCP(ImageControl):
         pos = event.position()
         self.zoom = max(self.zoom + 0.10*(delta and delta // abs(delta)), 1.0)
 
+        '''Maybe this belongs to update histogram function'''
         image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
+        if self.num_channels == 1:
+            image_zoom = image_zoom[:,:,np.newaxis]
+
         h0, w0 = self.image.shape[:2]
 
-        # Keep pos as a fixed point of the transformation
-        left = int( pos.x() * self.bottomleft.x()*self.zoom/(self.zoom - 1) )
-        right = left + w0 
-        bottom = int( pos.y() * self.bottomleft.y()*self.zoom/(self.zoom - 1)) 
+        # choosing bottomleft position such that pos is a fixed point of the transformation
+        left = int(pos.x()*(self.zoom - 1))
+        right = left + w0
+        bottom = int(pos.y()*(self.zoom - 1)) 
         top = bottom + h0
+
         self.bottomleft = QPoint(left, bottom)/self.zoom
+        print(self.bottomleft)
 
         # crop to original size
-        self.image_transformed = image_zoom[bottom:top, left:right] 
+        self.image_transformed = image_zoom[bottom:top, left:right, :] 
+        '''STOP '''
 
         self.update()
 
@@ -339,6 +346,9 @@ class ImageControlCP(ImageControl):
             delta = event.pos() - self.last_mouse_pos
 
             image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
+            if self.num_channels == 1:
+                image_zoom = image_zoom[:,:,np.newaxis]
+
             h, w = image_zoom.shape[:2]
             h0, w0 = self.image.shape[:2]
             
@@ -348,7 +358,7 @@ class ImageControlCP(ImageControl):
             top = bottom + h0
             self.bottomleft = QPoint(left, bottom)/self.zoom
 
-            self.image_transformed = image_zoom[bottom:top, left:right] 
+            self.image_transformed = image_zoom[bottom:top, left:right, :] 
         
         self.last_mouse_pos = event.pos()
         self.update()
