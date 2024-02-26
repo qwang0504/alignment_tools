@@ -331,7 +331,6 @@ class ImageControlCP(ImageControl):
         top = bottom + h0
 
         self.bottomleft = QPoint(left, bottom)/self.zoom
-        print(self.bottomleft)
 
         # crop to original size
         self.image_transformed = image_zoom[bottom:top, left:right, :] 
@@ -341,26 +340,47 @@ class ImageControlCP(ImageControl):
 
     def on_mouse_move(self, event):
 
-        if event.buttons() == Qt.RightButton: # note that it is event.buttons() with an s
+        if event.buttons() == Qt.RightButton:
+            h0, w0 = self.image.shape[:2]
             pos = event.pos()
-            delta = event.pos() - self.last_mouse_pos
-
+            
+            x, y = pos.x(), pos.y()
+            dx, dy = 0,0
+            if x < 0.05*w0:
+                dx += -10
+                local_coord = QPoint(0.05*w0, y)
+                global_coord = self.image_label.mapToGlobal(local_coord)
+                self.cursor().setPos(global_coord)
+            elif x > 0.9*w0:
+                dx += 10
+                local_coord = QPoint(0.9*w0, y)
+                global_coord = self.image_label.mapToGlobal(local_coord)
+                self.cursor().setPos(global_coord)
+            if y < 0.05*h0:
+                dy += -10
+                local_coord = QPoint(x, 0.05*h0)
+                global_coord = self.image_label.mapToGlobal(local_coord)
+                self.cursor().setPos(global_coord)
+            elif y > 0.9*h0:
+                dy += 10
+                local_coord = QPoint(x, 0.9*h0)
+                global_coord = self.image_label.mapToGlobal(local_coord)
+                self.cursor().setPos(global_coord)
+        
             image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
             if self.num_channels == 1:
                 image_zoom = image_zoom[:,:,np.newaxis]
-
             h, w = image_zoom.shape[:2]
-            h0, w0 = self.image.shape[:2]
             
-            left = np.clip(int(pos.x()*(self.zoom - 1)) + delta.x(), 0, w - w0)
+            left = np.clip(int(self.bottomleft.x()*self.zoom + dx), 0, w - w0)
             right = left + w0
-            bottom = np.clip(int(pos.y()*(self.zoom - 1)) + delta.y(), 0, h - h0)
+            bottom = np.clip(int(self.bottomleft.y()*self.zoom + dy), 0, h - h0)
             top = bottom + h0
+
             self.bottomleft = QPoint(left, bottom)/self.zoom
 
             self.image_transformed = image_zoom[bottom:top, left:right, :] 
         
-        self.last_mouse_pos = event.pos()
         self.update()
         
     def on_mouse_press(self, event):
