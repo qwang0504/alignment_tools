@@ -347,7 +347,7 @@ class ImageControlCP(ImageControl):
         # zoom around that 
         left = np.clip(int(center.x()*self.zoom - im_size.x()/2), 0, w - self.im_width)
         right = left + self.im_width
-        bottom = np.clip(int(center.y()*self.zoom- im_size.y()/2), 0, h - self.im_height)
+        bottom = np.clip(int(center.y()*self.zoom - im_size.y()/2), 0, h - self.im_height)
         top = bottom + self.im_height
 
         self.bottomleft = QPoint(left, bottom)/self.zoom
