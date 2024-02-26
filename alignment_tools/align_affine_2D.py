@@ -280,6 +280,8 @@ def l2(p: QPoint)-> float :
     return np.sqrt(p.x()**2 + p.y()**2)
 
 class ImageControlCP(ImageControl):
+    #TODO fix zoom
+    #TODO fix transformation with zoom 
 
     def __init__(self, image: NDArray, *args, **kwargs):
         
@@ -432,42 +434,49 @@ class AlignAffine2D(QWidget):
         self.scale_x.setText('scale x')
         self.scale_x.setRange(-1000,1000)
         self.scale_x.setValue(1.0)
+        self.scale_x.setSingleStep(0.05)
         self.scale_x.valueChanged.connect(self.update_transformation)
 
         self.scale_y = LabeledDoubleSpinBox(self)
         self.scale_y.setText('scale y')
         self.scale_y.setRange(-1000,1000)
         self.scale_y.setValue(1.0)
+        self.scale_y.setSingleStep(0.05)
         self.scale_y.valueChanged.connect(self.update_transformation)
 
         self.shear_x = LabeledDoubleSpinBox(self)
         self.shear_x.setText('shear x')
         self.shear_x.setRange(-1000,1000)
         self.shear_x.setValue(0.0)
+        self.shear_x.setSingleStep(0.01)
         self.shear_x.valueChanged.connect(self.update_transformation)
 
         self.shear_y = LabeledDoubleSpinBox(self)
         self.shear_y.setText('shear y')
         self.shear_y.setRange(-1000,1000)
         self.shear_y.setValue(0.0)
+        self.shear_y.setSingleStep(0.01)
         self.shear_y.valueChanged.connect(self.update_transformation)
 
         self.rotation = LabeledDoubleSpinBox(self)
         self.rotation.setText('rotate (deg)')
         self.rotation.setRange(-100_000,100_000)
         self.rotation.setValue(0)
+        self.rotation.setSingleStep(0.5)
         self.rotation.valueChanged.connect(self.update_transformation)
 
         self.translate_x = LabeledDoubleSpinBox(self)
         self.translate_x.setText('translate x')
         self.translate_x.setRange(-100_000,100_000)
         self.translate_x.setValue(0.0)
+        self.translate_x.setSingleStep(1.0)
         self.translate_x.valueChanged.connect(self.update_transformation)
 
         self.translate_y = LabeledDoubleSpinBox(self)
         self.translate_y.setText('translate y')
         self.translate_y.setRange(-100_000,100_000)
         self.translate_y.setValue(0.0)
+        self.translate_y.setSingleStep(1.0)
         self.translate_y.valueChanged.connect(self.update_transformation)
 
         self.transformation_groupbox = QGroupBox('Parameters:')
@@ -500,15 +509,15 @@ class AlignAffine2D(QWidget):
         layout_fixed_moving.addStretch()
         layout_fixed_moving.addWidget(self.fixed_label)
         layout_fixed_moving.addWidget(self.moving_label)
-        layout_fixed_moving.addWidget(self.transformation_groupbox)
         layout_fixed_moving.addStretch()
 
         self.tabs = QTabWidget(self)
         self.tabs.addTab(self.transform, "transform")
         self.tabs.addTab(self.overlay_label, "overlay")
 
-        main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
         main_layout.addWidget(self.tabs)
+        main_layout.addWidget(self.transformation_groupbox)
 
     def update_overlay(self, T: NDArray):
 
