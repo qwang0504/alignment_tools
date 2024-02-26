@@ -298,8 +298,6 @@ class ImageControlCP(ImageControl):
         self.image_label.wheelEvent = self.on_mouse_wheel
         self.image_label.mouseMoveEvent = self.on_mouse_move
         
-        
-
     def paintEvent(self, event):
 
         # redraw over image
