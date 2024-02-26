@@ -280,7 +280,6 @@ def l2(p: QPoint)-> float :
     return np.sqrt(p.x()**2 + p.y()**2)
 
 class ImageControlCP(ImageControl):
-    #TODO fix zoom
     #TODO fix transformation with zoom 
 
     def __init__(self, image: NDArray, *args, **kwargs):
