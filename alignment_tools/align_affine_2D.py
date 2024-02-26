@@ -292,6 +292,7 @@ class ImageControlCP(ImageControl):
         self.im_height = self.image.shape[0]
         self.im_width = self.image.shape[1]
         self.bottomleft = QPoint(0,0)
+        self.center = QPoint(self.im_height//2,self.im_width//2)
         
         self.image_label.setMouseTracking(True)
         self.image_label.mousePressEvent = self.on_mouse_press
@@ -330,28 +331,13 @@ class ImageControlCP(ImageControl):
             image_zoom = image_zoom[:,:,np.newaxis]
         h, w = image_zoom.shape[:2]
 
-        '''
-        # choosing bottomleft position such that pos is a fixed point of the transformation
-        left = int(pos.x()*(self.zoom - 1))
-        right = left + w0
-        bottom = int(pos.y()*(self.zoom - 1)) 
-        top = bottom + h0
-        '''
-
-        ## zooming around the current center
-
-        # find center 
-        im_size = QPoint(self.im_height,self.im_width)
-        center = self.bottomleft + im_size/(2*self.zoom)
- 
-        # zoom around that 
-        left = np.clip(int(center.x()*self.zoom - im_size.x()/2), 0, w - self.im_width)
+        left = np.clip(int(self.center.x()*self.zoom - self.im_width/2), 0, w - self.im_width)
         right = left + self.im_width
-        bottom = np.clip(int(center.y()*self.zoom - im_size.y()/2), 0, h - self.im_height)
+        bottom = np.clip(int(self.center.y()*self.zoom - self.im_height/2), 0, h - self.im_height)
         top = bottom + self.im_height
 
         self.bottomleft = QPoint(left, bottom)/self.zoom
-        print(self.bottomleft)
+        self.center = QPoint((left+right)/2, (bottom+top)/2)/self.zoom
 
         # crop to original size
         self.image_transformed = image_zoom[bottom:top, left:right, :] 
@@ -398,6 +384,7 @@ class ImageControlCP(ImageControl):
             top = bottom + self.im_height
 
             self.bottomleft = QPoint(left, bottom)/self.zoom
+            self.center = QPoint((left+right)/2, (bottom+top)/2)/self.zoom
 
             self.image_transformed = image_zoom[bottom:top, left:right, :] 
         
