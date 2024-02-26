@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QSlider
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QApplication
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
@@ -285,10 +285,12 @@ class ImageControlCP(ImageControl):
         
         super().__init__(image, *args, **kwargs)
         self.control_points = []
-        self.zoom = 0
+        self.zoom = 1.0
+        self.last_mouse_pos = QPoint(0,0)
+        self.image_label.setMouseTracking(True)
         self.image_label.mousePressEvent = self.on_mouse_press
         self.image_label.wheelEvent = self.on_mouse_wheel
-
+        self.image_label.mouseMoveEvent = self.on_mouse_move
 
     def paintEvent(self, event):
 
@@ -311,28 +313,66 @@ class ImageControlCP(ImageControl):
     def on_mouse_wheel(self, event):
         delta = event.angleDelta().y()
         pos = event.position()
-        self.zoom += (delta and delta // abs(delta))
-        print(self.zoom, pos)
+        self.zoom = max(self.zoom + 0.10*(delta and delta // abs(delta)), 1.0)
 
+        # resize image by scaling and cropping
+        if self.zoom > 1.0:
+            image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
+            h0, w0 = self.image.shape[:2]
+
+            # Keep pos as a fixed point of the transformation
+            left = int(pos.x()*(self.zoom - 1)) 
+            right = left + w0
+            bottom = int(pos.y()*(self.zoom - 1)) 
+            top = bottom + h0
+
+            # crop to original size
+            self.image_transformed = image_zoom[bottom:top, left:right] 
+            self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+
+        else:
+            self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image)))
+
+    def on_mouse_move(self, event):
+
+        if event.buttons() == Qt.RightButton: # note that it is event.buttons() with an s
+            pos = event.pos()
+            delta = event.pos() - self.last_mouse_pos
+
+            image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
+            h, w = image_zoom.shape[:2]
+            h0, w0 = self.image.shape[:2]
+            
+            left = np.clip(int(pos.x()*(self.zoom - 1)) + delta.x(), 0, w - w0)
+            right = left + w0
+            bottom = np.clip(int(pos.y()*(self.zoom - 1)) + delta.y(), 0, h - h0)
+            top = bottom + h0
+
+            self.image_transformed = image_zoom[bottom:top, left:right] 
+            self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        
+        self.last_mouse_pos = event.pos()
+        
     def on_mouse_press(self, event):
         # TODO maybe put this in parent class
-
+        
         # left-click adds a new control point
         if event.button() == Qt.LeftButton:
-
-            num = 0 if not self.control_points else max(self.control_points, key=lambda x: x[1])[1] + 1
-            pos = event.pos()
-            self.control_points.append((pos, num))
-
-        # right-click deletes the closest control point
-        elif event.button() == Qt.RightButton:
             
-            # get closest point and delete from list of points
-            distances = [l2(event.pos() - pos) for (pos, name) in self.control_points]
-            if distances:
-                closest_point = np.argmin(distances)
-                self.control_points.pop(closest_point)
+            # remove point with shift pressed
+            if event.modifiers() == Qt.ShiftModifier:
+                # get closest point and delete from list of points
+                distances = [l2(event.pos() - pos) for (pos, name) in self.control_points]
+                if distances:
+                    closest_point = np.argmin(distances)
+                    self.control_points.pop(closest_point)
 
+            # add point otherwise
+            else:
+                num = 0 if not self.control_points else max(self.control_points, key=lambda x: x[1])[1] + 1
+                pos = event.pos()
+                self.control_points.append((pos, num))
+            
         self.update()
 
 
