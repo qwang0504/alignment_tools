@@ -288,12 +288,17 @@ class ImageControlCP(ImageControl):
         super().__init__(image, *args, **kwargs)
         self.control_points = []
         self.zoom = 1.0
-        self.bottomleft = QPoint(0,0)
         self.last_mouse_pos = QPoint(0,0)
+        self.im_height = self.image.shape[0]
+        self.im_width = self.image.shape[1]
+        self.bottomleft = QPoint(0,0)
+        
         self.image_label.setMouseTracking(True)
         self.image_label.mousePressEvent = self.on_mouse_press
         self.image_label.wheelEvent = self.on_mouse_wheel
         self.image_label.mouseMoveEvent = self.on_mouse_move
+        
+        
 
     def paintEvent(self, event):
 
@@ -323,16 +328,30 @@ class ImageControlCP(ImageControl):
         image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
         if self.num_channels == 1:
             image_zoom = image_zoom[:,:,np.newaxis]
+        h, w = image_zoom.shape[:2]
 
-        h0, w0 = self.image.shape[:2]
-
+        '''
         # choosing bottomleft position such that pos is a fixed point of the transformation
         left = int(pos.x()*(self.zoom - 1))
         right = left + w0
         bottom = int(pos.y()*(self.zoom - 1)) 
         top = bottom + h0
+        '''
+
+        ## zooming around the current center
+
+        # find center 
+        im_size = QPoint(self.im_height,self.im_width)
+        center = self.bottomleft + im_size/(2*self.zoom)
+ 
+        # zoom around that 
+        left = np.clip(int(center.x()*self.zoom - im_size.x()/2), 0, w - self.im_width)
+        right = left + self.im_width
+        bottom = np.clip(int(center.y()*self.zoom- im_size.y()/2), 0, h - self.im_height)
+        top = bottom + self.im_height
 
         self.bottomleft = QPoint(left, bottom)/self.zoom
+        print(self.bottomleft)
 
         # crop to original size
         self.image_transformed = image_zoom[bottom:top, left:right, :] 
@@ -343,29 +362,28 @@ class ImageControlCP(ImageControl):
     def on_mouse_move(self, event):
 
         if event.buttons() == Qt.RightButton:
-            h0, w0 = self.image.shape[:2]
             pos = event.pos()
             
             x, y = pos.x(), pos.y()
             dx, dy = 0,0
-            if x < 0.05*w0:
+            if x < 0.05*self.im_width:
                 dx += -10
-                local_coord = QPoint(0.05*w0, y)
+                local_coord = QPoint(0.05*self.im_width, y)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
-            elif x > 0.9*w0:
+            elif x > 0.9*self.im_width:
                 dx += 10
-                local_coord = QPoint(0.9*w0, y)
+                local_coord = QPoint(0.9*self.im_width, y)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
-            if y < 0.05*h0:
+            if y < 0.05*self.im_height:
                 dy += -10
-                local_coord = QPoint(x, 0.05*h0)
+                local_coord = QPoint(x, 0.05*self.im_height)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
-            elif y > 0.9*h0:
+            elif y > 0.9*self.im_height:
                 dy += 10
-                local_coord = QPoint(x, 0.9*h0)
+                local_coord = QPoint(x, 0.9*self.im_height)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
         
@@ -374,10 +392,10 @@ class ImageControlCP(ImageControl):
                 image_zoom = image_zoom[:,:,np.newaxis]
             h, w = image_zoom.shape[:2]
             
-            left = np.clip(int(self.bottomleft.x()*self.zoom + dx), 0, w - w0)
-            right = left + w0
-            bottom = np.clip(int(self.bottomleft.y()*self.zoom + dy), 0, h - h0)
-            top = bottom + h0
+            left = np.clip(int(self.bottomleft.x()*self.zoom + dx), 0, w - self.im_width)
+            right = left + self.im_width
+            bottom = np.clip(int(self.bottomleft.y()*self.zoom + dy), 0, h - self.im_height)
+            top = bottom + self.im_height
 
             self.bottomleft = QPoint(left, bottom)/self.zoom
 
