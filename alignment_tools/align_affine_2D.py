@@ -286,6 +286,7 @@ class ImageControlCP(ImageControl):
         super().__init__(image, *args, **kwargs)
         self.control_points = []
         self.zoom = 1.0
+        self.bottomleft = QPoint(0,0)
         self.last_mouse_pos = QPoint(0,0)
         self.image_label.setMouseTracking(True)
         self.image_label.mousePressEvent = self.on_mouse_press
@@ -307,31 +308,29 @@ class ImageControlCP(ImageControl):
         painter.setFont(font)
         offset = QPoint(5,-5)
         for cp in self.control_points:
-            painter.drawPoint(cp[0])
-            painter.drawText(cp[0]+offset, str(cp[1]))
+            painter.drawPoint((cp[0]-self.bottomleft)*self.zoom)
+            painter.drawText((cp[0]+offset-self.bottomleft)*self.zoom, str(cp[1]))
 
     def on_mouse_wheel(self, event):
+
         delta = event.angleDelta().y()
         pos = event.position()
         self.zoom = max(self.zoom + 0.10*(delta and delta // abs(delta)), 1.0)
 
-        # resize image by scaling and cropping
-        if self.zoom > 1.0:
-            image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
-            h0, w0 = self.image.shape[:2]
+        image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
+        h0, w0 = self.image.shape[:2]
 
-            # Keep pos as a fixed point of the transformation
-            left = int(pos.x()*(self.zoom - 1)) 
-            right = left + w0
-            bottom = int(pos.y()*(self.zoom - 1)) 
-            top = bottom + h0
+        # Keep pos as a fixed point of the transformation
+        left = int( pos.x() * self.bottomleft.x()*self.zoom/(self.zoom - 1) )
+        right = left + w0 
+        bottom = int( pos.y() * self.bottomleft.y()*self.zoom/(self.zoom - 1)) 
+        top = bottom + h0
+        self.bottomleft = QPoint(left, bottom)/self.zoom
 
-            # crop to original size
-            self.image_transformed = image_zoom[bottom:top, left:right] 
-            self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        # crop to original size
+        self.image_transformed = image_zoom[bottom:top, left:right] 
 
-        else:
-            self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image)))
+        self.update()
 
     def on_mouse_move(self, event):
 
@@ -347,11 +346,12 @@ class ImageControlCP(ImageControl):
             right = left + w0
             bottom = np.clip(int(pos.y()*(self.zoom - 1)) + delta.y(), 0, h - h0)
             top = bottom + h0
+            self.bottomleft = QPoint(left, bottom)/self.zoom
 
             self.image_transformed = image_zoom[bottom:top, left:right] 
-            self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
         
         self.last_mouse_pos = event.pos()
+        self.update()
         
     def on_mouse_press(self, event):
         # TODO maybe put this in parent class
@@ -370,7 +370,7 @@ class ImageControlCP(ImageControl):
             # add point otherwise
             else:
                 num = 0 if not self.control_points else max(self.control_points, key=lambda x: x[1])[1] + 1
-                pos = event.pos()
+                pos = event.pos()/self.zoom + self.bottomleft 
                 self.control_points.append((pos, num))
             
         self.update()
