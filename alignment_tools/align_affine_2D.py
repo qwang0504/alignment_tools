@@ -419,6 +419,7 @@ class ImageControlCP(ImageControl):
                 pos = event.pos()/self.zoom + self.bottomleft 
                 self.control_points.append((pos, num))
             
+        self.update_histogram()
         self.update()
 
 class AlignAffine2D(QWidget):
