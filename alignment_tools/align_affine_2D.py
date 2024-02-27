@@ -438,6 +438,27 @@ class ImageControlCP(ImageControl):
         self.update_histogram()
         self.update()
 
+def affine_transformation_matrix_to_params(A: NDArray):
+    '''
+    Decompose affine transformation into shear, rotation, scaling and translation
+    This decomposition assumes the following order: scaling, shear, rotation and 
+    translation.
+
+        | 1  0  t_x |   | cos(theta) -sin(theta) 0 |   | 1 hx  0 |   | s_x  0  0 |
+    A = | 0  1  t_y | X | sin(theta)  cos(theta) 0 | X | 0  1  0 | X |  0  s_y 0 |
+        | 0  0   1  |   |     0            0     1 |   | 0  0  1 |   |  0   0  1 |
+    '''
+    
+    RHS = A[:2,:2]
+    s_x = np.sqrt(RHS[0,0]**2 + RHS[1,0]**2)
+    s_y = np.linalg.det(RHS)/s_x
+    theta = np.arctan2(RHS[1,0],RHS[0,0])
+    h_x = (RHS[:,0] @ RHS[:,1])/np.linalg.det(RHS)
+    t_x = A[0,2]
+    t_y = A[1,2]
+
+    return (s_x, s_y, theta, h_x, t_x, t_y)
+
 class AlignAffine2D(QWidget):
     def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
         
@@ -528,7 +549,6 @@ class AlignAffine2D(QWidget):
         self.transformation_matrix_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.transformation_matrix_table.setMaximumHeight(100)
 
-
         self.transformation_groupbox = QGroupBox('Parameters:')
         
         self.transform = QWidget(self)
@@ -591,39 +611,54 @@ class AlignAffine2D(QWidget):
         sc_x = self.scale_x.value()
         sc_y = self.scale_y.value()
 
-        Shear = np.array([[ 1.0, sh_x,   0],
-                          [sh_y,  1.0,   0],
-                          [   0,    0, 1.0]])
+        H = np.array([[ 1.0, sh_x,   0],
+                    [sh_y,  1.0,   0],
+                    [   0,    0, 1.0]])
         
-        Rotation = np.array([[c, -s,   0],
-                             [s,  c,   0],
-                             [0,  0, 1.0]])
-        
-        Translation = np.array([[1.0,   0, t_x],
-                                [0,   1.0, t_y],
-                                [0,     0, 1.0]])
-        
-        Scale = np.array([[sc_x,    0,   0],
-                          [0,    sc_y,   0],
-                          [0,       0, 1.0]])
+        R = np.array([[c, -s,   0],
+                    [s,  c,   0],
+                    [0,  0, 1.0]])
 
-        T = Shear @ Scale @ Rotation @ Translation
-        self.update_overlay(T)
+        S = np.array([[sc_x,    0,   0],
+                    [0,    sc_y,   0],
+                    [0,       0, 1.0]])
+        
+        T = np.array([[1.0,   0, t_x],
+                    [0,   1.0, t_y],
+                    [0,     0, 1.0]])
+
+        A = T @ R @ H @ S
+
+        # update transformation matrix
+        for i in range(3):
+            for j in range(3):
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{A[i,j]:2f}'))
+
+        self.update_overlay(A)
 
     def align_control_points(self):
 
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
-        T = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
+        A = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
 
-        # TODO extract param value: this is a bit hard
+        # update parameters
+        (s_x, s_y, theta, h_x, t_x, t_y) = affine_transformation_matrix_to_params(A)
+        self.scale_x.setValue(s_x)
+        self.scale_y.setValue(s_y)
+        self.rotation.setValue(np.rad2deg(theta))
+        self.shear_x.setValue(h_x)
+        self.shear_y.setValue(0)
+        self.translate_x.setValue(t_x)
+        self.translate_y.setValue(t_y)
 
         # update transformation matrix
         for i in range(3):
             for j in range(3):
-                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{T[i,j]:2f}'))
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{A[i,j]:2f}'))
 
-        self.update_overlay(T)
+        self.update_overlay(A)
 
     def align_automatically(self):
         pass
+
