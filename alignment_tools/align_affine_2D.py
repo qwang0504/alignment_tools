@@ -70,7 +70,6 @@ class ImageControl(QWidget):
         ## image -------------------------------------------------
         self.image_label = QLabel(self)
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-        self.image_label.setMouseTracking(True)
         self.image_label.wheelEvent = self.on_mouse_wheel
         self.image_label.mouseMoveEvent = self.on_mouse_move
 
@@ -258,8 +257,8 @@ class ImageControl(QWidget):
                 # update curves
                 x = np.arange(0,1,0.01)
                 u = np.piecewise(
-                    u, 
-                    [u<self.state['min'][ch], (u>=self.state['min'][ch]) & (u<=self.state['max'][ch]), u>self.state['max'][ch]],
+                    x, 
+                    [x<self.state['min'][ch], (x>=self.state['min'][ch]) & (x<=self.state['max'][ch]), x>self.state['max'][ch]],
                     [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
                 )
                 y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
@@ -378,16 +377,15 @@ def l2(p: QPoint)-> float :
 
 class ImageControlCP(ImageControl):
 
-    def __init__(self, image: NDArray, *args, **kwargs):
+    def __init__(self, image: NDArray, expert_mode: bool = False, *args, **kwargs):
         
-        super().__init__(image, *args, **kwargs)
+        super().__init__(image, expert_mode, *args, **kwargs)
         self.control_points = []
         self.image_label.mousePressEvent = self.on_mouse_press
         
     def paintEvent(self, event):
 
         # redraw over image
-        self.update_histogram()
         painter = QPainter(self.image_label.pixmap())
         pen = QPen()
         pen.setWidth(3)
@@ -439,9 +437,9 @@ class AlignAffine2D(QWidget):
 
         ## images
 
-        self.moving_label = ImageControlCP(self.moving)
-        self.fixed_label = ImageControlCP(self.fixed)
-        self.overlay_label = ImageControl(self.overlay)
+        self.moving_label = ImageControlCP(self.moving, expert_mode=True)
+        self.fixed_label = ImageControlCP(self.fixed, expert_mode=True)
+        self.overlay_label = ImageControl(self.overlay, expert_mode=True)
     
         ## 2D affine transform parameters
 
