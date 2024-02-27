@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QCheckBox
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
@@ -385,7 +385,7 @@ class ImageControl(QWidget):
         else:
             self.curve.hide()
             self.histogram.hide()
-            
+
         self.update_histogram()
 
 def l2(p: QPoint)-> float :
@@ -509,6 +509,26 @@ class AlignAffine2D(QWidget):
         self.translate_y.setSingleStep(1.0)
         self.translate_y.valueChanged.connect(self.update_transformation)
 
+        self.transformation_matrix_table = QTableWidget(self)
+        self.transformation_matrix_table.setRowCount(3)
+        self.transformation_matrix_table.setColumnCount(3)  
+        self.transformation_matrix_table.setItem(0,0,QTableWidgetItem('1.0'))
+        self.transformation_matrix_table.setItem(0,1,QTableWidgetItem('0.0'))
+        self.transformation_matrix_table.setItem(0,2,QTableWidgetItem('0.0'))
+        self.transformation_matrix_table.setItem(1,0,QTableWidgetItem('0.0'))
+        self.transformation_matrix_table.setItem(1,1,QTableWidgetItem('1.0'))
+        self.transformation_matrix_table.setItem(1,2,QTableWidgetItem('0.0'))
+        self.transformation_matrix_table.setItem(2,0,QTableWidgetItem('0.0'))
+        self.transformation_matrix_table.setItem(2,1,QTableWidgetItem('0.0'))
+        self.transformation_matrix_table.setItem(2,2,QTableWidgetItem('1.0'))
+        self.transformation_matrix_table.cellEntered.connect(self.update_transformation_matrix)
+        self.transformation_matrix_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.transformation_matrix_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.transformation_matrix_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.transformation_matrix_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.transformation_matrix_table.setMaximumHeight(100)
+
+
         self.transformation_groupbox = QGroupBox('Parameters:')
         
         self.transform = QWidget(self)
@@ -531,6 +551,7 @@ class AlignAffine2D(QWidget):
         layout_params.addWidget(self.rotation)
         layout_params.addWidget(self.translate_x)
         layout_params.addWidget(self.translate_y)
+        layout_params.addWidget(self.transformation_matrix_table)
         layout_params.addWidget(self.align_cp)
         layout_params.addWidget(self.align_auto)
         layout_params.addStretch()
@@ -555,6 +576,9 @@ class AlignAffine2D(QWidget):
         self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
         self.overlay_label.set_image(self.overlay)
         self.overlay_label.reset_transform()
+
+    def update_transformation_matrix(self):
+        pass
 
     def update_transformation(self):
         
@@ -593,6 +617,11 @@ class AlignAffine2D(QWidget):
         T = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
 
         # TODO extract param value: this is a bit hard
+
+        # update transformation matrix
+        for i in range(3):
+            for j in range(3):
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{T[i,j]:2f}'))
 
         self.update_overlay(T)
 
