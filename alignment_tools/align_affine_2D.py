@@ -236,7 +236,7 @@ class ImageControl(QWidget):
         self.curve.clear()
         self.histogram.clear()
 
-        # TODO: this is a bit slow. Parallelize ?
+        # TODO: this is a bit slow. Parallelize ? Do that on cropped image before resizing ?
         # reapply transformation on all channels
         for ch in range(self.num_channels):
 
