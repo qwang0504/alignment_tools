@@ -236,6 +236,7 @@ class ImageControl(QWidget):
         self.curve.clear()
         self.histogram.clear()
 
+        # TODO: this is a bit slow. Parallelize ?
         # reapply transformation on all channels
         for ch in range(self.num_channels):
 
