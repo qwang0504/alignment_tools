@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QCheckBox
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
@@ -22,13 +22,12 @@ class ImageControl(QWidget):
     # TODO be able to reorganize widgets vertically to change the order of operations ?
     # TODO c&b and min/max not independent, change them concurently
 
-    def __init__(self, image: NDArray, expert_mode: bool = False, *args, **kwargs):
+    def __init__(self, image: NDArray, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
         self.set_image(image)
 
-        self.expert_mode = expert_mode
         self.state = {
             'contrast': [1.0 for i in range(self.num_channels)],
             'brightness': [0.0 for i in range(self.num_channels)],
@@ -74,6 +73,11 @@ class ImageControl(QWidget):
         self.image_label.mouseMoveEvent = self.on_mouse_move
 
         ## controls ----------------------------------------------
+
+        # expert mode
+        self.expert = QCheckBox(self)
+        self.expert.setText('expert mode')
+        self.expert.stateChanged.connect(self.expert_mode)
 
         # channel: which image channel to act on
         self.channel = LabeledSliderSpinBox(self)
@@ -139,9 +143,8 @@ class ImageControl(QWidget):
         self.reset.setText('Reset')
         self.reset.clicked.connect(self.reset_transform)
 
-        if not self.expert_mode:
-            self.curve.hide()
-            self.histogram.hide()
+        self.curve.hide()
+        self.histogram.hide()
 
     def layout_components(self):
 
@@ -154,6 +157,7 @@ class ImageControl(QWidget):
         layout_main = QVBoxLayout(self)
         layout_main.addStretch()
         layout_main.addWidget(self.image_label)
+        layout_main.addWidget(self.expert)
         layout_main.addWidget(self.channel)
         layout_main.addWidget(self.min)
         layout_main.addWidget(self.max)
@@ -236,7 +240,7 @@ class ImageControl(QWidget):
         self.curve.clear()
         self.histogram.clear()
 
-        # TODO: this is a bit slow. Parallelize ? Do that on cropped image before resizing ?
+        # TODO: this is a bit slow (histogram update in particular). Parallelize ? Do that on cropped image before resizing ?
         # reapply transformation on all channels
         for ch in range(self.num_channels):
 
@@ -253,10 +257,10 @@ class ImageControl(QWidget):
 
             self.image_transformed[:,:,ch] = I
 
-            if self.expert_mode:
+            if self.expert.isChecked():
                 
                 # update curves
-                x = np.arange(0,1,0.01)
+                x = np.arange(0,1,0.02)
                 u = np.piecewise(
                     x, 
                     [x<self.state['min'][ch], (x>=self.state['min'][ch]) & (x<=self.state['max'][ch]), x>self.state['max'][ch]],
@@ -265,7 +269,7 @@ class ImageControl(QWidget):
                 y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
                 self.curve.plot(x,y,pen=(ch,3))
 
-                # update histogram
+                # update histogram (slow)
                 for ch in range(self.num_channels):
                     y, x = np.histogram(I.ravel(), x)
                     self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
@@ -373,14 +377,25 @@ class ImageControl(QWidget):
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
         self.update_histogram()
 
+    def expert_mode(self):
+
+        if self.expert.isChecked():
+            self.curve.show()
+            self.histogram.show()
+        else:
+            self.curve.hide()
+            self.histogram.hide()
+            
+        self.update_histogram()
+
 def l2(p: QPoint)-> float :
     return np.sqrt(p.x()**2 + p.y()**2)
 
 class ImageControlCP(ImageControl):
 
-    def __init__(self, image: NDArray, expert_mode: bool = False, *args, **kwargs):
+    def __init__(self, image: NDArray, *args, **kwargs):
         
-        super().__init__(image, expert_mode, *args, **kwargs)
+        super().__init__(image, *args, **kwargs)
         self.control_points = []
         self.image_label.mousePressEvent = self.on_mouse_press
         
@@ -439,9 +454,9 @@ class AlignAffine2D(QWidget):
 
         ## images
 
-        self.moving_label = ImageControlCP(self.moving, expert_mode=True)
-        self.fixed_label = ImageControlCP(self.fixed, expert_mode=True)
-        self.overlay_label = ImageControl(self.overlay, expert_mode=True)
+        self.moving_label = ImageControlCP(self.moving)
+        self.fixed_label = ImageControlCP(self.fixed)
+        self.overlay_label = ImageControl(self.overlay)
     
         ## 2D affine transform parameters
 
