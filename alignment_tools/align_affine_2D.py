@@ -39,7 +39,6 @@ class ImageControl(QWidget):
         
         self.create_components()
         self.layout_components()
-        self.update_histogram()
         self.setMaximumWidth(image.shape[1])
 
         # setup zoom and pan
@@ -48,10 +47,11 @@ class ImageControl(QWidget):
         self.im_height = self.image.shape[0]
         self.im_width = self.image.shape[1]
         self.bottomleft = QPoint(0,0)
+        self.topright = QPoint(self.im_height,self.im_width)
         self.center = QPoint(self.im_height//2,self.im_width//2)
-        self.image_label.setMouseTracking(True)
-        self.image_label.wheelEvent = self.on_mouse_wheel
-        self.image_label.mouseMoveEvent = self.on_mouse_move
+        
+        # update 
+        self.update_histogram()
 
     def set_image(self, image: NDArray):
 
@@ -64,12 +64,16 @@ class ImageControl(QWidget):
 
         self.image = im2single(image)
         self.image_transformed = self.image.copy() 
+        self.image_zoom_pan = self.image.copy() 
 
     def create_components(self):
 
         ## image -------------------------------------------------
         self.image_label = QLabel(self)
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        self.image_label.setMouseTracking(True)
+        self.image_label.wheelEvent = self.on_mouse_wheel
+        self.image_label.mouseMoveEvent = self.on_mouse_move
 
         ## controls ----------------------------------------------
 
@@ -218,6 +222,12 @@ class ImageControl(QWidget):
         m = self.min.value()
         M = self.max.value()
         
+        # pan and zoom
+        image_cropped = self.image[self.bottomleft.y():self.topright.y(), self.bottomleft.x():self.topright.x(),:]
+        self.image_zoom_pan = cv2.resize(image_cropped, None, fx=self.zoom, fy=self.zoom)
+        if self.num_channels == 1:
+            self.image_zoom_pan = self.image_zoom_pan[:,:,np.newaxis]
+
         #c = 1/(M - m)
         #b = 0.5 - m + 0.5*(M-m) 
 
@@ -234,7 +244,7 @@ class ImageControl(QWidget):
         self.curve.plot(x,y)
 
         # transfrom image
-        I = self.image[:,:,w].copy()
+        I = self.image_zoom_pan[:,:,w].copy()
 
         I = np.piecewise(
             I, 
@@ -244,50 +254,47 @@ class ImageControl(QWidget):
         
         I = np.clip(c*(I**g-0.5)+b+0.5, 0 ,1)
 
-        self.image_transformed[:,:,w] = I
+        self.image_zoom_pan[:,:,w] = I
 
         # update histogram
         self.histogram.clear()
         for i in range(self.num_channels):
-            y, x = np.histogram(self.image_transformed[:,:,i].ravel(), x)
+            y, x = np.histogram(self.image_zoom_pan[:,:,i].ravel(), x)
             self.histogram.plot(x,y,stepMode="center", pen=(i,3))
 
         # update image
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_zoom_pan)))
 
     def on_mouse_wheel(self, event):
         # zoom on wheel scroll
 
+        # get zoom 
         delta = event.angleDelta().y()
-        pos = event.position()
         self.zoom = max(self.zoom + 0.10*(delta and delta // abs(delta)), 1.0)
-
-        '''Maybe this belongs to update histogram function'''
-        image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
-        if self.num_channels == 1:
-            image_zoom = image_zoom[:,:,np.newaxis]
-        h, w = image_zoom.shape[:2]
-
+        
+        # compute ROI to zoom around current ROI center
+        h, w = self.im_height*self.zoom, self.im_width*self.zoom
         left = np.clip(int(self.center.x()*self.zoom - self.im_width/2), 0, w - self.im_width)
         right = left + self.im_width
         bottom = np.clip(int(self.center.y()*self.zoom - self.im_height/2), 0, h - self.im_height)
         top = bottom + self.im_height
 
+        # store ROI
         self.bottomleft = QPoint(left, bottom)/self.zoom
+        self.topright = QPoint(right, top)/self.zoom
         self.center = QPoint((left+right)/2, (bottom+top)/2)/self.zoom
 
-        # crop to original size
-        self.image_transformed = image_zoom[bottom:top, left:right, :] 
-        '''STOP '''
-
-        self.update()
+        # update image
+        self.update_histogram()
 
     def on_mouse_move(self, event):
         # pan on right mouse click
 
         if event.buttons() == Qt.RightButton:
+
             pos = event.pos()
             
+            # pan on edges
             x, y = pos.x(), pos.y()
             dx, dy = 0,0
             if x < 0.05*self.im_width:
@@ -311,22 +318,20 @@ class ImageControl(QWidget):
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
         
-            image_zoom = cv2.resize(self.image, None, fx=self.zoom, fy=self.zoom)
-            if self.num_channels == 1:
-                image_zoom = image_zoom[:,:,np.newaxis]
-            h, w = image_zoom.shape[:2]
-            
+            # compute ROI 
+            h, w = self.im_height*self.zoom, self.im_width*self.zoom
             left = np.clip(int(self.bottomleft.x()*self.zoom + dx), 0, w - self.im_width)
             right = left + self.im_width
             bottom = np.clip(int(self.bottomleft.y()*self.zoom + dy), 0, h - self.im_height)
             top = bottom + self.im_height
 
+            # store ROI
             self.bottomleft = QPoint(left, bottom)/self.zoom
+            self.topright = QPoint(right, top)/self.zoom
             self.center = QPoint((left+right)/2, (bottom+top)/2)/self.zoom
 
-            self.image_transformed = image_zoom[bottom:top, left:right, :] 
-        
-        self.update()
+            # update image
+            self.update_histogram()
 
     def auto_scale(self):
 
@@ -364,7 +369,6 @@ def l2(p: QPoint)-> float :
     return np.sqrt(p.x()**2 + p.y()**2)
 
 class ImageControlCP(ImageControl):
-    #TODO fix transformation with zoom 
 
     def __init__(self, image: NDArray, *args, **kwargs):
         
@@ -375,7 +379,7 @@ class ImageControlCP(ImageControl):
     def paintEvent(self, event):
 
         # redraw over image
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        self.update_histogram()
         painter = QPainter(self.image_label.pixmap())
         pen = QPen()
         pen.setWidth(3)
