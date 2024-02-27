@@ -7,6 +7,6 @@ FIXED = 'toy_data/image_00.jpg'
 MOVING = 'toy_data/image_00.jpg'
 
 app = QApplication(sys.argv)
-window = AlignAffine2D(cv2.imread(FIXED)[:,:,0], cv2.imread(MOVING)[:,:,0])
+window = AlignAffine2D(cv2.imread(FIXED), cv2.imread(MOVING))
 window.show()
 app.exec()

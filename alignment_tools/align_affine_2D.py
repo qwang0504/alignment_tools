@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QApplication
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
@@ -19,8 +19,8 @@ class ImageControl(QWidget):
     The order is the order of the widgets top->down.
     '''
 
-    # TODO be able to reorganize widgets vertically to change the order of operations
-    # TODO c&b and min/max not independent, change them both
+    # TODO be able to reorganize widgets vertically to change the order of operations ?
+    # TODO c&b and min/max not independent, change them concurently
 
     def __init__(self, image: NDArray, expert_mode: bool = False, *args, **kwargs):
 
@@ -64,7 +64,6 @@ class ImageControl(QWidget):
 
         self.image = im2single(image)
         self.image_transformed = self.image.copy() 
-        self.image_zoom_pan = self.image.copy() 
 
     def create_components(self):
 
@@ -221,49 +220,58 @@ class ImageControl(QWidget):
         g = self.gamma.value()
         m = self.min.value()
         M = self.max.value()
-        
-        # pan and zoom
-        image_cropped = self.image[self.bottomleft.y():self.topright.y(), self.bottomleft.x():self.topright.x(),:]
-        self.image_zoom_pan = cv2.resize(image_cropped, None, fx=self.zoom, fy=self.zoom)
-        if self.num_channels == 1:
-            self.image_zoom_pan = self.image_zoom_pan[:,:,np.newaxis]
 
-        #c = 1/(M - m)
-        #b = 0.5 - m + 0.5*(M-m) 
-
+        # update parameter state 
         self.state['contrast'][w] = c
         self.state['brightness'][w] = b
         self.state['gamma'][w] = g
         self.state['min'][w] = m
         self.state['max'][w] = M
 
-        # update curve
-        x = np.arange(0,1,0.01)
-        y = np.clip(c*(np.piecewise(x,[x<m, (x>=m) & (x<=M), x>M],[0, lambda x: (x-m)/(M-m), 1])**g-0.5)+0.5+b, 0 ,1)
+        # pan and zoom
+        image_cropped = self.image[self.bottomleft.y():self.topright.y(), self.bottomleft.x():self.topright.x(),:]
+        self.image_transformed = cv2.resize(image_cropped, None, fx=self.zoom, fy=self.zoom)
+        if self.num_channels == 1:
+            self.image_transformed = self.image_transformed[:,:,np.newaxis]
+
         self.curve.clear()
-        self.curve.plot(x,y)
-
-        # transfrom image
-        I = self.image_zoom_pan[:,:,w].copy()
-
-        I = np.piecewise(
-            I, 
-            [I<m, (I>=m) & (I<=M), I>M],
-            [0, lambda x: (x-m)/(M-m), 1]
-        )
-        
-        I = np.clip(c*(I**g-0.5)+b+0.5, 0 ,1)
-
-        self.image_zoom_pan[:,:,w] = I
-
-        # update histogram
         self.histogram.clear()
-        for i in range(self.num_channels):
-            y, x = np.histogram(self.image_zoom_pan[:,:,i].ravel(), x)
-            self.histogram.plot(x,y,stepMode="center", pen=(i,3))
+
+        # reapply transformation on all channels
+        for ch in range(self.num_channels):
+
+            # transfrom image channel
+            I = self.image_transformed[:,:,ch].copy()
+
+            I = np.piecewise(
+                I, 
+                [I<self.state['min'][ch], (I>=self.state['min'][ch]) & (I<=self.state['max'][ch]), I>self.state['max'][ch]],
+                [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
+            )
+            
+            I = np.clip(self.state['contrast'][ch] * (I** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
+
+            self.image_transformed[:,:,ch] = I
+
+            if self.expert_mode:
+                
+                # update curves
+                x = np.arange(0,1,0.01)
+                u = np.piecewise(
+                    u, 
+                    [u<self.state['min'][ch], (u>=self.state['min'][ch]) & (u<=self.state['max'][ch]), u>self.state['max'][ch]],
+                    [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
+                )
+                y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
+                self.curve.plot(x,y,pen=(ch,3))
+
+                # update histogram
+                for ch in range(self.num_channels):
+                    y, x = np.histogram(I.ravel(), x)
+                    self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
 
         # update image
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_zoom_pan)))
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
 
     def on_mouse_wheel(self, event):
         # zoom on wheel scroll
