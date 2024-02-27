@@ -12,5 +12,4 @@ registration = ants.registration(fixed=image_fixed, moving=image_moving, type_of
 affine_matrix = registration['fwdtransforms'][0]
 
 # Print the affine matrix
-print("Affine Transformation Matrix:")
 print(affine_matrix)
