@@ -1,5 +1,15 @@
 import ants
 import cv2
+import numpy as np
+
+def ANTsTransform_to_matrix(transform):
+    dimension = transform.dimension
+    params = transform.parameters
+    affine = params.reshape((dimension + 1, dimension))
+    affine_matrix = np.eye(dimension + 1)
+    affine_matrix[:dimension, :dimension] = affine[:dimension, :dimension]
+    affine_matrix[:dimension, dimension] = affine[dimension, :]
+    return affine_matrix
 
 # Load your two images
 image_fixed = ants.from_numpy(cv2.imread('toy_data/image_00.jpg')[:,:,0])
@@ -11,5 +21,5 @@ registration = ants.registration(fixed=image_fixed, moving=image_moving, type_of
 # Get the affine transformation matrix
 affine_matrix = registration['fwdtransforms'][0]
 
-# Print the affine matrix
-print(affine_matrix)
+Tf = ants.read_transform(affine_matrix)
+A = ANTsTransform_to_matrix(Tf)

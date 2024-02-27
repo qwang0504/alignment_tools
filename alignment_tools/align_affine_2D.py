@@ -660,5 +660,6 @@ class AlignAffine2D(QWidget):
         self.update_overlay(A)
 
     def align_automatically(self):
+        # TODO use ANTs 
         pass
 
