@@ -429,7 +429,7 @@ class AlignAffine2D(QWidget):
 
         self.moving = moving
         self.fixed = fixed
-        self.moving_transformed = np.zeros_like(self.fixed)
+        self.moving_transformed = self.moving
         self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
         self.create_components()
         self.layout_components()
