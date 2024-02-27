@@ -42,6 +42,17 @@ class ImageControl(QWidget):
         self.update_histogram()
         self.setMaximumWidth(image.shape[1])
 
+        # setup zoom and pan
+        self.zoom = 1.0
+        self.last_mouse_pos = QPoint(0,0)
+        self.im_height = self.image.shape[0]
+        self.im_width = self.image.shape[1]
+        self.bottomleft = QPoint(0,0)
+        self.center = QPoint(self.im_height//2,self.im_width//2)
+        self.image_label.setMouseTracking(True)
+        self.image_label.wheelEvent = self.on_mouse_wheel
+        self.image_label.mouseMoveEvent = self.on_mouse_move
+
     def set_image(self, image: NDArray):
 
         if len(image.shape) > 3:
@@ -244,79 +255,8 @@ class ImageControl(QWidget):
         # update image
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
 
-    def auto_scale(self):
-
-        m = np.percentile(self.image, 5)
-        M = np.percentile(self.image, 99)
-        self.min.setValue(m)
-        self.max.setValue(M)
-        self.update_histogram()
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-    
-    def reset_transform(self):
-        
-        # reset state
-        self.state = {
-            'contrast': [1.0 for i in range(self.num_channels)],
-            'brightness': [0.0 for i in range(self.num_channels)],
-            'gamma': [1.0 for i in range(self.num_channels)],
-            'min': [0.0 for i in range(self.num_channels)],
-            'max': [1.0 for i in range(self.num_channels)]
-        }
-                
-        # reset parameters
-        self.contrast.setValue(1.0)
-        self.brightness.setValue(0.0)
-        self.gamma.setValue(1.0)
-        self.min.setValue(0.0)
-        self.max.setValue(1.0)
-
-        # reset image
-        self.image_transformed = self.image.copy()
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-        self.update_histogram()
-
-def l2(p: QPoint)-> float :
-    return np.sqrt(p.x()**2 + p.y()**2)
-
-class ImageControlCP(ImageControl):
-    #TODO fix transformation with zoom 
-
-    def __init__(self, image: NDArray, *args, **kwargs):
-        
-        super().__init__(image, *args, **kwargs)
-        self.control_points = []
-        self.zoom = 1.0
-        self.last_mouse_pos = QPoint(0,0)
-        self.im_height = self.image.shape[0]
-        self.im_width = self.image.shape[1]
-        self.bottomleft = QPoint(0,0)
-        self.center = QPoint(self.im_height//2,self.im_width//2)
-        
-        self.image_label.setMouseTracking(True)
-        self.image_label.mousePressEvent = self.on_mouse_press
-        self.image_label.wheelEvent = self.on_mouse_wheel
-        self.image_label.mouseMoveEvent = self.on_mouse_move
-        
-    def paintEvent(self, event):
-
-        # redraw over image
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-        painter = QPainter(self.image_label.pixmap())
-        pen = QPen()
-        pen.setWidth(3)
-        font = QFont()
-        font.setPixelSize(30)
-        pen_color = QColor(255, 0, 0, 255)
-        pen.setColor(pen_color)
-        painter.setPen(pen)
-        painter.setFont(font)
-        offset = QPoint(5,-5)
-        for cp in self.control_points:
-            painter.drawPoint((cp[0]-self.bottomleft)*self.zoom)
-            painter.drawText((cp[0]+offset-self.bottomleft)*self.zoom, str(cp[1]))
-
     def on_mouse_wheel(self, event):
+        # zoom on wheel scroll
 
         delta = event.angleDelta().y()
         pos = event.position()
@@ -343,6 +283,7 @@ class ImageControlCP(ImageControl):
         self.update()
 
     def on_mouse_move(self, event):
+        # pan on right mouse click
 
         if event.buttons() == Qt.RightButton:
             pos = event.pos()
@@ -386,9 +327,70 @@ class ImageControlCP(ImageControl):
             self.image_transformed = image_zoom[bottom:top, left:right, :] 
         
         self.update()
+
+    def auto_scale(self):
+
+        m = np.percentile(self.image, 5)
+        M = np.percentile(self.image, 99)
+        self.min.setValue(m)
+        self.max.setValue(M)
+        self.update_histogram()
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+    
+    def reset_transform(self):
+        
+        # reset state
+        self.state = {
+            'contrast': [1.0 for i in range(self.num_channels)],
+            'brightness': [0.0 for i in range(self.num_channels)],
+            'gamma': [1.0 for i in range(self.num_channels)],
+            'min': [0.0 for i in range(self.num_channels)],
+            'max': [1.0 for i in range(self.num_channels)]
+        }
+                
+        # reset parameters
+        self.contrast.setValue(1.0)
+        self.brightness.setValue(0.0)
+        self.gamma.setValue(1.0)
+        self.min.setValue(0.0)
+        self.max.setValue(1.0)
+
+        # reset image
+        self.image_transformed = self.image.copy()
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        self.update_histogram()
+
+def l2(p: QPoint)-> float :
+    return np.sqrt(p.x()**2 + p.y()**2)
+
+class ImageControlCP(ImageControl):
+    #TODO fix transformation with zoom 
+
+    def __init__(self, image: NDArray, *args, **kwargs):
+        
+        super().__init__(image, *args, **kwargs)
+        self.control_points = []
+        self.image_label.mousePressEvent = self.on_mouse_press
+        
+    def paintEvent(self, event):
+
+        # redraw over image
+        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
+        painter = QPainter(self.image_label.pixmap())
+        pen = QPen()
+        pen.setWidth(3)
+        font = QFont()
+        font.setPixelSize(30)
+        pen_color = QColor(255, 0, 0, 255)
+        pen.setColor(pen_color)
+        painter.setPen(pen)
+        painter.setFont(font)
+        offset = QPoint(5,-5)
+        for cp in self.control_points:
+            painter.drawPoint((cp[0]-self.bottomleft)*self.zoom)
+            painter.drawText((cp[0]+offset-self.bottomleft)*self.zoom, str(cp[1]))
         
     def on_mouse_press(self, event):
-        # TODO maybe put this in parent class
         
         # left-click adds a new control point
         if event.button() == Qt.LeftButton:
@@ -408,7 +410,6 @@ class ImageControlCP(ImageControl):
                 self.control_points.append((pos, num))
             
         self.update()
-
 
 class AlignAffine2D(QWidget):
     def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
