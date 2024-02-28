@@ -558,6 +558,8 @@ class AlignAffine2D(QWidget):
         self.transformation_matrix_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.transformation_matrix_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.transformation_matrix_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.transformation_matrix_table.horizontalHeader().hide()
+        self.transformation_matrix_table.verticalHeader().hide()
         self.transformation_matrix_table.setMaximumHeight(100)
 
         self.transformation_groupbox = QGroupBox('Parameters:')
