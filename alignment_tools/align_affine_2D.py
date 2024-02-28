@@ -7,6 +7,8 @@ from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDo
 from image_tools import im2single, im2uint8
 import pyqtgraph as pg
 import cv2
+import ants
+
 
 # https://github.com/pyqtgraph/pyqtgraph/blob/master/pyqtgraph/examples
 
@@ -459,6 +461,15 @@ def affine_transformation_matrix_to_params(A: NDArray):
 
     return (s_x, s_y, theta, h_x, t_x, t_y)
 
+def ANTsTransform_to_matrix(transform):
+    dimension = transform.dimension
+    params = transform.parameters
+    affine = params.reshape((dimension + 1, dimension))
+    affine_matrix = np.eye(dimension + 1)
+    affine_matrix[:dimension, :dimension] = affine[:dimension, :dimension]
+    affine_matrix[:dimension, dimension] = affine[dimension, :]
+    return affine_matrix
+
 class AlignAffine2D(QWidget):
     def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
         
@@ -468,6 +479,7 @@ class AlignAffine2D(QWidget):
         self.fixed = fixed
         self.moving_transformed = self.moving
         self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
+        self.affine_transform = np.eye(3,dtype=float)
         self.create_components()
         self.layout_components()
 
@@ -553,6 +565,10 @@ class AlignAffine2D(QWidget):
         
         self.transform = QWidget(self)
 
+        self.reset = QPushButton(self)
+        self.reset.setText('Reset transformation')
+        self.reset.clicked.connect(self.reset_transform)
+
         self.align_cp = QPushButton(self)
         self.align_cp.setText('Align with control points')
         self.align_cp.clicked.connect(self.align_control_points)
@@ -572,6 +588,7 @@ class AlignAffine2D(QWidget):
         layout_params.addWidget(self.translate_x)
         layout_params.addWidget(self.translate_y)
         layout_params.addWidget(self.transformation_matrix_table)
+        layout_params.addWidget(self.reset)
         layout_params.addWidget(self.align_cp)
         layout_params.addWidget(self.align_auto)
         layout_params.addStretch()
@@ -590,11 +607,11 @@ class AlignAffine2D(QWidget):
         main_layout.addWidget(self.tabs)
         main_layout.addWidget(self.transformation_groupbox)
 
-    def update_overlay(self, T: NDArray):
+    def update_overlay(self):
 
-        self.moving_transformed = cv2.warpAffine(self.moving, T[:2,:], self.fixed.shape)
+        self.moving_transformed = cv2.warpAffine(self.moving, self.affine_transform[:2,:], self.fixed.shape)
         self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
-        self.overlay_label.set_image(self.overlay)
+        self.overlay_label.set_image(self.overlay) 
         self.overlay_label.reset_transform()
 
     def update_transformation_matrix(self):
@@ -629,37 +646,167 @@ class AlignAffine2D(QWidget):
 
         A = T @ R @ H @ S
 
+        self.affine_transform = A
+
         # update transformation matrix
         for i in range(3):
             for j in range(3):
-                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{A[i,j]:2f}'))
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{self.affine_transform[i,j]:2f}'))
 
-        self.update_overlay(A)
+        self.update_overlay()
 
     def align_control_points(self):
 
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
         A = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
+        self.affine_transform = A
+
+        ## update GUI (TODO make a function)
 
         # update parameters
-        (s_x, s_y, theta, h_x, t_x, t_y) = affine_transformation_matrix_to_params(A)
+        (s_x, s_y, theta, h_x, t_x, t_y) = affine_transformation_matrix_to_params(self.affine_transform)
+        self.scale_x.blockSignals(True)
         self.scale_x.setValue(s_x)
+        self.scale_x.blockSignals(False)
+
+        self.scale_y.blockSignals(True)
         self.scale_y.setValue(s_y)
+        self.scale_y.blockSignals(False)
+
+        self.rotation.blockSignals(True)
         self.rotation.setValue(np.rad2deg(theta))
+        self.rotation.blockSignals(False)
+
+        self.shear_x.blockSignals(True)
         self.shear_x.setValue(h_x)
+        self.shear_x.blockSignals(False)
+
+        self.shear_y.blockSignals(True)
         self.shear_y.setValue(0)
+        self.shear_y.blockSignals(False)
+
+        self.translate_x.blockSignals(True)
         self.translate_x.setValue(t_x)
+        self.translate_x.blockSignals(False)
+
+        self.translate_y.blockSignals(True)
         self.translate_y.setValue(t_y)
+        self.translate_y.blockSignals(False)
 
         # update transformation matrix
         for i in range(3):
             for j in range(3):
-                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{A[i,j]:2f}'))
+                self.transformation_matrix_table.blockSignals(True)
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{self.affine_transform[i,j]:2f}'))
+                self.transformation_matrix_table.blockSignals(False)
 
-        self.update_overlay(A)
+        # update overlay image
+        self.update_overlay()
+
+    def reset_transform(self):
+
+        self.affine_transform = np.eye(3,dtype=float)
+
+        # update parameters
+        (s_x, s_y, theta, h_x, t_x, t_y) = (1.0, 1.0, 0.0, 0.0, 0.0, 0.0)
+        self.scale_x.blockSignals(True)
+        self.scale_x.setValue(s_x)
+        self.scale_x.blockSignals(False)
+
+        self.scale_y.blockSignals(True)
+        self.scale_y.setValue(s_y)
+        self.scale_y.blockSignals(False)
+
+        self.rotation.blockSignals(True)
+        self.rotation.setValue(np.rad2deg(theta))
+        self.rotation.blockSignals(False)
+
+        self.shear_x.blockSignals(True)
+        self.shear_x.setValue(h_x)
+        self.shear_x.blockSignals(False)
+
+        self.shear_y.blockSignals(True)
+        self.shear_y.setValue(0)
+        self.shear_y.blockSignals(False)
+
+        self.translate_x.blockSignals(True)
+        self.translate_x.setValue(t_x)
+        self.translate_x.blockSignals(False)
+
+        self.translate_y.blockSignals(True)
+        self.translate_y.setValue(t_y)
+        self.translate_y.blockSignals(False)
+
+        # update transformation matrix
+        for i in range(3):
+            for j in range(3):
+                self.transformation_matrix_table.blockSignals(True)
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{self.affine_transform[i,j]:2f}'))
+                self.transformation_matrix_table.blockSignals(False)
+        
+        # update GUI
+        self.update_overlay()
 
     def align_automatically(self):
-        # TODO use ANTs 
-        pass
+
+        # works after a few iterations if you're relatively close
+
+        # Affine registration with ANTs
+        registration = ants.registration(
+            fixed = ants.from_numpy(np.transpose(self.fixed)), 
+            moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
+            type_of_transform = 'Affine',
+            verbose = False
+        )
+
+        # Get the affine transformation matrix
+        transform_file = registration['fwdtransforms'][0]
+        Tf = ants.read_transform(transform_file)
+        A = ANTsTransform_to_matrix(Tf)
+
+        # compose with current transformation
+        self.affine_transform = np.linalg.inv(A) @ self.affine_transform
+
+        ## update the GUI
+
+        # update parameters 
+        (s_x, s_y, theta, h_x, t_x, t_y) = affine_transformation_matrix_to_params(self.affine_transform)
+        self.scale_x.blockSignals(True)
+        self.scale_x.setValue(s_x)
+        self.scale_x.blockSignals(False)
+
+        self.scale_y.blockSignals(True)
+        self.scale_y.setValue(s_y)
+        self.scale_y.blockSignals(False)
+
+        self.rotation.blockSignals(True)
+        self.rotation.setValue(np.rad2deg(theta))
+        self.rotation.blockSignals(False)
+
+        self.shear_x.blockSignals(True)
+        self.shear_x.setValue(h_x)
+        self.shear_x.blockSignals(False)
+
+        self.shear_y.blockSignals(True)
+        self.shear_y.setValue(0)
+        self.shear_y.blockSignals(False)
+
+        self.translate_x.blockSignals(True)
+        self.translate_x.setValue(t_x)
+        self.translate_x.blockSignals(False)
+
+        self.translate_y.blockSignals(True)
+        self.translate_y.setValue(t_y)
+        self.translate_y.blockSignals(False)
+
+        # update transformation matrix
+        for i in range(3):
+            for j in range(3):
+                self.transformation_matrix_table.blockSignals(True)
+                self.transformation_matrix_table.setItem(i,j,QTableWidgetItem(f'{self.affine_transform[i,j]:2f}'))
+                self.transformation_matrix_table.blockSignals(False)
+
+        # update overlay image
+        self.update_overlay()
 
