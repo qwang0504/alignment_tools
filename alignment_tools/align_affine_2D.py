@@ -553,7 +553,7 @@ class AlignAffine2D(QWidget):
         self.transformation_matrix_table.setItem(2,0,QTableWidgetItem('0.0'))
         self.transformation_matrix_table.setItem(2,1,QTableWidgetItem('0.0'))
         self.transformation_matrix_table.setItem(2,2,QTableWidgetItem('1.0'))
-        self.transformation_matrix_table.cellEntered.connect(self.update_transformation_matrix)
+        self.transformation_matrix_table.cellChanged.connect(self.update_transformation_matrix)
         self.transformation_matrix_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.transformation_matrix_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.transformation_matrix_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -613,8 +613,42 @@ class AlignAffine2D(QWidget):
         self.overlay_label.set_image(self.overlay) 
         self.overlay_label.reset_transform()
 
-    def update_transformation_matrix(self):
-        pass
+    def update_transformation_matrix(self, row: int, col: int):
+
+        it = self.transformation_matrix_table.item(row,col)
+        self.affine_transform[row,col] = float(it.text())
+
+        # update parameters
+        (s_x, s_y, theta, h_x, t_x, t_y) = affine_transformation_matrix_to_params(self.affine_transform)
+        self.scale_x.blockSignals(True)
+        self.scale_x.setValue(s_x)
+        self.scale_x.blockSignals(False)
+
+        self.scale_y.blockSignals(True)
+        self.scale_y.setValue(s_y)
+        self.scale_y.blockSignals(False)
+
+        self.rotation.blockSignals(True)
+        self.rotation.setValue(np.rad2deg(theta))
+        self.rotation.blockSignals(False)
+
+        self.shear_x.blockSignals(True)
+        self.shear_x.setValue(h_x)
+        self.shear_x.blockSignals(False)
+
+        self.shear_y.blockSignals(True)
+        self.shear_y.setValue(0)
+        self.shear_y.blockSignals(False)
+
+        self.translate_x.blockSignals(True)
+        self.translate_x.setValue(t_x)
+        self.translate_x.blockSignals(False)
+
+        self.translate_y.blockSignals(True)
+        self.translate_y.setValue(t_y)
+        self.translate_y.blockSignals(False)
+
+        self.update_overlay()
 
     def update_transformation(self):
         
