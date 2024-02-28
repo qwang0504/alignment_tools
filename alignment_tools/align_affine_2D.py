@@ -481,6 +481,8 @@ class AlignAffine2D(QWidget):
         self.affine_transform = np.eye(3,dtype=float)
         self.create_components()
         self.layout_components()
+        self.setWindowTitle("Registration2D")
+        self.closeEvent = self.on_close
 
     def create_components(self):
 
@@ -489,7 +491,7 @@ class AlignAffine2D(QWidget):
         self.moving_label = ImageControlCP(self.moving)
         self.fixed_label = ImageControlCP(self.fixed)
         self.overlay_label = ImageControl(self.overlay)
-    
+
         ## 2D affine transform parameters
 
         self.scale_x = LabeledDoubleSpinBox(self)
@@ -565,8 +567,6 @@ class AlignAffine2D(QWidget):
 
         self.transformation_groupbox = QGroupBox('Parameters:')
         
-        self.transform = QWidget(self)
-
         self.reset = QPushButton(self)
         self.reset.setText('Reset transformation')
         self.reset.clicked.connect(self.reset_transform)
@@ -595,19 +595,18 @@ class AlignAffine2D(QWidget):
         layout_params.addWidget(self.align_auto)
         layout_params.addStretch()
 
-        layout_fixed_moving = QHBoxLayout(self.transform)
-        layout_fixed_moving.addStretch()
-        layout_fixed_moving.addWidget(self.fixed_label)
-        layout_fixed_moving.addWidget(self.moving_label)
-        layout_fixed_moving.addStretch()
-
-        self.tabs = QTabWidget(self)
-        self.tabs.addTab(self.transform, "transform")
-        self.tabs.addTab(self.overlay_label, "overlay")
-
         main_layout = QHBoxLayout(self)
-        main_layout.addWidget(self.tabs)
         main_layout.addWidget(self.transformation_groupbox)
+
+        # open widgets as separate windwos
+        self.fixed_label.show()
+        self.fixed_label.setWindowTitle("fixed image")
+
+        self.moving_label.show()
+        self.moving_label.setWindowTitle("moving image")
+
+        self.overlay_label.show()
+        self.overlay_label.setWindowTitle("overlay")
 
     def update_images(self):
 
@@ -748,3 +747,7 @@ class AlignAffine2D(QWidget):
         self.update_table()
         self.update_images()
 
+    def on_close(self, event):
+        self.moving_label.close()
+        self.fixed_label.close()
+        self.overlay_label.close()
