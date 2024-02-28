@@ -14,6 +14,8 @@ setup(
         "pyqt5",
         "pyqtgraph",
         "opencv-python",
-        "git+https://github.com/ElTinmar/qt_widgets.git@main"
+        "antspyx",
+        "qt_widgets @ git+https://github.com/ElTinmar/qt_widgets.git@main",
+        "image_tools @ git+https://github.com/ElTinmar/image_tools.git@main"
     ]
 )
