@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView, QFrame
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
@@ -560,6 +560,7 @@ class AlignAffine2D(QWidget):
         self.transformation_matrix_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.transformation_matrix_table.horizontalHeader().hide()
         self.transformation_matrix_table.verticalHeader().hide()
+        self.transformation_matrix_table.setFrameShape(QFrame.NoFrame)
         self.transformation_matrix_table.setMaximumHeight(100)
 
         self.transformation_groupbox = QGroupBox('Parameters:')
