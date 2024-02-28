@@ -12,8 +12,11 @@ def ANTsTransform_to_matrix(transform):
     return affine_matrix
 
 # Load your two images
+np_image = cv2.imread('toy_data/image_00.jpg')[:,:,0]
+ants_image = ants.from_numpy(np_image)
+
 image_fixed = ants.from_numpy(np.transpose(cv2.imread('toy_data/image_00.jpg')[:,:,0]))
-image_moving = ants.from_numpy(np.transpose(cv2.imread('toy_data/image_00.jpg')[:,:,0]))
+image_moving = ants.from_numpy(np.transpose(cv2.imread('toy_data/image_01.jpg')[:,:,0]))
 
 image_fixed.plot()
 
@@ -21,15 +24,15 @@ image_fixed.plot()
 registration = ants.registration(fixed=image_fixed, moving=image_moving, type_of_transform='Similarity', verbose = True)
 
 # Get the affine transformation matrix
-affine_matrix = registration['fwdtransforms'][0]
-
-Tf = ants.read_transform(affine_matrix)
+Tf = ants.read_transform(registration['fwdtransforms'][0])
 Tr = ants.read_transform(registration['invtransforms'][0])
 
-A = ANTsTransform_to_matrix(Tf)
+Af = ANTsTransform_to_matrix(Tf)
+Ar = ANTsTransform_to_matrix(Tr)
 
+np.allclose(Af,Ar) # fwdtransforms and invtransforms are the same, you need to be careful and potentially inverse the matrix before use
 
-# 
+#
 f = ants.utils.get_pointer_string(image_fixed)
 m = ants.utils.get_pointer_string(image_moving)
 initx = ["[%s,%s,1]" % (f, m)]
