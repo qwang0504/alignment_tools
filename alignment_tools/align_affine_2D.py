@@ -461,6 +461,7 @@ def affine_transformation_matrix_to_params(A: NDArray):
     return (s_x, s_y, theta, h_x, t_x, t_y)
 
 def ANTsTransform_to_matrix(transform):
+    # transform ANTsTransform object into a numpy affine transformation matrix
     dimension = transform.dimension
     params = transform.parameters
     affine = params.reshape((dimension + 1, dimension))
@@ -609,6 +610,7 @@ class AlignAffine2D(QWidget):
         self.overlay_label.setWindowTitle("overlay")
 
     def update_images(self):
+        # update overlay image
 
         self.moving_transformed = cv2.warpAffine(self.moving, self.affine_transform[:2,:], self.fixed.shape)
         self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
@@ -616,6 +618,7 @@ class AlignAffine2D(QWidget):
         self.overlay_label.reset_transform()
 
     def update_spinboxes(self, s_x, s_y, theta, h_x, t_x, t_y):
+        # update values without triggering callbacks
 
         self.scale_x.blockSignals(True)
         self.scale_x.setValue(s_x)
@@ -646,6 +649,7 @@ class AlignAffine2D(QWidget):
         self.translate_y.blockSignals(False)
 
     def update_table(self):
+        # update values without triggering callbacks
 
         for i in range(3):
             for j in range(3):
