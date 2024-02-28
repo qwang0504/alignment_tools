@@ -751,13 +751,13 @@ class AlignAffine2D(QWidget):
     def align_automatically(self):
 
         # works after a few iterations if you're relatively close
+        # WHY TRANSPOSE AND INVERSE THO ????
 
         # Affine registration with ANTs
         registration = ants.registration(
             fixed = ants.from_numpy(np.transpose(self.fixed)), 
             moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
-            type_of_transform = 'Affine',
-            verbose = False
+            type_of_transform = 'Affine'
         )
 
         # Get the affine transformation matrix
