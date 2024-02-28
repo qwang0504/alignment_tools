@@ -30,6 +30,15 @@ class ImageControl(QWidget):
 
         self.set_image(image)
 
+        # setup zoom and pan
+        self.zoom = 1.0
+        self.last_mouse_pos = QPoint(0,0)
+        self.im_height = self.image.shape[0]
+        self.im_width = self.image.shape[1]
+        self.bottomleft = QPoint(0,0)
+        self.topright = QPoint(self.im_width,self.im_height)
+        self.center = QPoint(self.im_width//2,self.im_height//2)
+
         self.state = {
             'contrast': [1.0 for i in range(self.num_channels)],
             'brightness': [0.0 for i in range(self.num_channels)],
@@ -40,16 +49,6 @@ class ImageControl(QWidget):
         
         self.create_components()
         self.layout_components()
-        self.setMaximumWidth(image.shape[1])
-
-        # setup zoom and pan
-        self.zoom = 1.0
-        self.last_mouse_pos = QPoint(0,0)
-        self.im_height = self.image.shape[0]
-        self.im_width = self.image.shape[1]
-        self.bottomleft = QPoint(0,0)
-        self.topright = QPoint(self.im_height,self.im_width)
-        self.center = QPoint(self.im_height//2,self.im_width//2)
         
         # update 
         self.update_histogram()
