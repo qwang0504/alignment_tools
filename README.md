@@ -30,5 +30,6 @@ Use mouse wheel to zoom, right-click drag towards the edges to pan, left-click t
 and shift-left-click to remove the nearest control point.
 Place at least 3 control points before computing the control point-based transformation.   
 Then refine using auto registration (uses ANTs). You may need to click a few times to get it
-right
+right.   
+Do auto registration only when you're close enough with control points, otherwise it won't converge.
 
