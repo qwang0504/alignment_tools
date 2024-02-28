@@ -24,6 +24,9 @@ class ImageControl(QWidget):
     # TODO be able to reorganize widgets vertically to change the order of operations ?
     # TODO c&b and min/max not independent, change them concurently
 
+    ZOOM_SPEED = 0.2
+    PAN_SPEED = 4
+
     def __init__(self, image: NDArray, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -283,7 +286,7 @@ class ImageControl(QWidget):
 
         # get zoom 
         delta = event.angleDelta().y()
-        self.zoom = max(self.zoom + 0.10*(delta and delta // abs(delta)), 1.0)
+        self.zoom = max(self.zoom + self.ZOOM_SPEED*(delta and delta // abs(delta)), 1.0)
         
         # compute ROI to zoom around current ROI center
         h, w = self.im_height*self.zoom, self.im_width*self.zoom
@@ -311,22 +314,22 @@ class ImageControl(QWidget):
             x, y = pos.x(), pos.y()
             dx, dy = 0,0
             if x < 0.05*self.im_width:
-                dx += -10
+                dx += -self.PAN_SPEED*self.im_width/100
                 local_coord = QPoint(0.05*self.im_width, y)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
             elif x > 0.9*self.im_width:
-                dx += 10
+                dx += self.PAN_SPEED*self.im_width/100
                 local_coord = QPoint(0.9*self.im_width, y)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
             if y < 0.05*self.im_height:
-                dy += -10
+                dy += -self.PAN_SPEED*self.im_height/100
                 local_coord = QPoint(x, 0.05*self.im_height)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
             elif y > 0.9*self.im_height:
-                dy += 10
+                dy += self.PAN_SPEED*self.im_height/100
                 local_coord = QPoint(x, 0.9*self.im_height)
                 global_coord = self.image_label.mapToGlobal(local_coord)
                 self.cursor().setPos(global_coord)
