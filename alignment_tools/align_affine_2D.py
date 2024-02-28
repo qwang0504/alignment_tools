@@ -698,6 +698,7 @@ class AlignAffine2D(QWidget):
 
     def align_control_points(self):
 
+        # find affine transformation between two sets of points
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
         A = np.transpose(np.linalg.lstsq(b, a, rcond=None)[0])
