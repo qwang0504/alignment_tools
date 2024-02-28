@@ -478,7 +478,7 @@ class AlignAffine2D(QWidget):
         self.moving = moving
         self.fixed = fixed
         self.moving_transformed = self.moving
-        self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
+        self.overlay = np.dstack((self.fixed,np.zeros_like(self.fixed),np.zeros_like(self.fixed)))
         self.affine_transform = np.eye(3,dtype=float)
         self.create_components()
         self.layout_components()
@@ -659,7 +659,7 @@ class AlignAffine2D(QWidget):
 
         a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
         b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
-        A = np.transpose(np.linalg.lstsq(a, b, rcond=None)[0])
+        A = np.transpose(np.linalg.lstsq(b, a, rcond=None)[0])
         self.affine_transform = A
 
         ## update GUI (TODO make a function)
