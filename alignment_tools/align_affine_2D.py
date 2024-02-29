@@ -465,12 +465,21 @@ def affine_transformation_matrix_to_params(A: NDArray):
 
 def ANTsTransform_to_matrix(transform):
     # transform ANTsTransform object into a numpy affine transformation matrix
+    
     dimension = transform.dimension
     params = transform.parameters
+    rotation_center = transform.fixed_parameters
     affine = params.reshape((dimension + 1, dimension))
-    affine_matrix = np.eye(dimension + 1)
-    affine_matrix[:dimension, :dimension] = affine[:dimension, :dimension]
-    affine_matrix[:dimension, dimension] = affine[dimension, :]
+
+    RHS = np.eye(dimension + 1)
+    T = np.eye(dimension + 1)
+    C = np.eye(dimension + 1)
+    RHS[:dimension, :dimension] = affine[:dimension, :dimension]
+    T[:dimension, dimension] = affine[dimension, :]
+    C[:dimension, dimension] = rotation_center
+
+    affine_matrix = T @ C @ RHS @ np.linalg.inv(C) 
+
     return affine_matrix
 
 class AlignAffine2D(QWidget):
@@ -737,14 +746,22 @@ class AlignAffine2D(QWidget):
             fixed = ants.from_numpy(np.transpose(self.fixed)), 
             moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
             type_of_transform = 'Affine',
+            aff_iterations= (1000, 500, 500, 100),
+            verbose = True
         )
+
+        registration['warpedmovout'].plot()
 
         # Get the affine transformation matrix
         # CAUTION invtransforms and fwdtransforms are the same for affine (https://github.com/ANTsX/ANTsPy/issues/340) 
         # Here I need to take the inverse
         transform_file = registration['fwdtransforms'][0]
         Tf = ants.read_transform(transform_file)
-        A =  np.linalg.inv(ANTsTransform_to_matrix(Tf))
+        A = np.linalg.inv(ANTsTransform_to_matrix(Tf))
+
+        print(Tf.parameters)
+        print(Tf.fixed_parameters)
+        print(A)
 
         # compose with current transformation
         self.affine_transform = A @ self.affine_transform
