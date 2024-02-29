@@ -9,6 +9,8 @@ import pyqtgraph as pg
 import cv2
 import ants
 
+from io import StringIO 
+from contextlib import redirect_stdout
 
 # https://github.com/pyqtgraph/pyqtgraph/blob/master/pyqtgraph/examples
 
@@ -465,6 +467,8 @@ def affine_transformation_matrix_to_params(A: NDArray):
 
 def ANTsTransform_to_matrix(transform):
     # transform ANTsTransform object into a numpy affine transformation matrix
+    # ANTsTransform.fixed_parameters stores the center of rotation
+    # ANTsTransform.parameters store additional rotation/scale/shear/translation
     
     dimension = transform.dimension
     params = transform.parameters
@@ -738,19 +742,26 @@ class AlignAffine2D(QWidget):
 
     def align_automatically(self):
 
-        # Works after a few iterations (clicks on the button) if you're relatively close
-
         # Affine registration with ANTs
-        # CAUTION It looks like images are flipped by ANTs (need to transpose) 
-        registration = ants.registration(
-            fixed = ants.from_numpy(np.transpose(self.fixed)), 
-            moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
-            type_of_transform = 'Affine',
-            aff_iterations= (1000, 500, 500, 100),
-            verbose = True
-        )
 
-        registration['warpedmovout'].plot()
+        log = StringIO() 
+        with redirect_stdout(log):
+            # capture logs on stdout
+                
+            # CAUTION It looks like images are flipped by ANTs (need to transpose) 
+            registration = ants.registration(
+                fixed = ants.from_numpy(np.transpose(self.fixed)), 
+                moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
+                type_of_transform = 'Affine',
+                aff_iterations= (1000, 500, 500, 100),
+                aff_sampling=64, 
+                aff_random_sampling_rate=1.0,
+                aff_shrink_factors=(6, 4, 2, 1), 
+                aff_smoothing_sigmas=(3, 2, 1, 0),
+                verbose = True
+            )
+
+        #print(log.getvalue())
 
         # Get the affine transformation matrix
         # CAUTION invtransforms and fwdtransforms are the same for affine (https://github.com/ANTsX/ANTsPy/issues/340) 
@@ -758,10 +769,6 @@ class AlignAffine2D(QWidget):
         transform_file = registration['fwdtransforms'][0]
         Tf = ants.read_transform(transform_file)
         A = np.linalg.inv(ANTsTransform_to_matrix(Tf))
-
-        print(Tf.parameters)
-        print(Tf.fixed_parameters)
-        print(A)
 
         # compose with current transformation
         self.affine_transform = A @ self.affine_transform
