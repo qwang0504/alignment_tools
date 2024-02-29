@@ -9,9 +9,6 @@ import pyqtgraph as pg
 import cv2
 import ants
 
-from io import StringIO 
-from contextlib import redirect_stdout
-
 # https://github.com/pyqtgraph/pyqtgraph/blob/master/pyqtgraph/examples
 
 # TODO: this probably belongs in image tools
@@ -743,25 +740,18 @@ class AlignAffine2D(QWidget):
     def align_automatically(self):
 
         # Affine registration with ANTs
-
-        log = StringIO() 
-        with redirect_stdout(log):
-            # capture logs on stdout
-                
-            # CAUTION It looks like images are flipped by ANTs (need to transpose) 
-            registration = ants.registration(
-                fixed = ants.from_numpy(np.transpose(self.fixed)), 
-                moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
-                type_of_transform = 'Affine',
-                aff_iterations= (1000, 500, 500, 100),
-                aff_sampling=64, 
-                aff_random_sampling_rate=1.0,
-                aff_shrink_factors=(6, 4, 2, 1), 
-                aff_smoothing_sigmas=(3, 2, 1, 0),
-                verbose = True
-            )
-
-        #print(log.getvalue())
+        # CAUTION It looks like images are flipped by ANTs (need to transpose) 
+        registration = ants.registration(
+            fixed = ants.from_numpy(np.transpose(self.fixed)), 
+            moving = ants.from_numpy(np.transpose(self.moving_transformed)), 
+            type_of_transform = 'Affine',
+            aff_iterations= (1000, 500, 500, 100),
+            aff_sampling=64, 
+            aff_random_sampling_rate=1.0,
+            aff_shrink_factors=(6, 4, 2, 1), 
+            aff_smoothing_sigmas=(3, 2, 1, 0),
+            verbose = True
+        )
 
         # Get the affine transformation matrix
         # CAUTION invtransforms and fwdtransforms are the same for affine (https://github.com/ANTsX/ANTsPy/issues/340) 
