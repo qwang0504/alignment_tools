@@ -4,7 +4,7 @@ import sys
 import cv2
 
 FIXED = cv2.imread('toy_data/image_00.jpg')[:,:,0]
-MOVING = cv2.imread('toy_data/image_02.jpg')[:,:,0]
+MOVING = cv2.imread('toy_data/image_03.jpg')[:,:,0]
 
 app = QApplication(sys.argv)
 window = AlignAffine2D(FIXED, MOVING)
