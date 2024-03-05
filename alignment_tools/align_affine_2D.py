@@ -625,7 +625,8 @@ class AlignAffine2D(QWidget):
     def update_images(self):
         # update overlay image
 
-        self.moving_transformed = cv2.warpAffine(self.moving, self.affine_transform[:2,:], self.fixed.shape)
+        h, w = self.fixed.shape[:2]
+        self.moving_transformed = cv2.warpAffine(self.moving, self.affine_transform[:2,:], (w,h))
         self.overlay = np.dstack((self.fixed,self.moving_transformed,np.zeros_like(self.fixed)))
         self.overlay_label.set_image(self.overlay) 
         self.overlay_label.reset_transform()
