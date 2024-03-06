@@ -27,25 +27,34 @@ class ControlPoint(QGraphicsView):
         self.font = QFont("Arial", 20)
 
     def set_image(self, image: np.ndarray):
+        
         self.image = image
         self.pixmap_item.setPixmap(NDarray_to_QPixmap(image))
 
     def closest_group(self, pos: QPointF):
-        ellipses = [
+
+        # get all group objects
+        groups = [
             item 
             for item in self.scene.items() 
             if isinstance(item, QGraphicsItemGroup)
         ]
+
+        # compute the manhattan distance from pos to all group objects
         distances = [
             (item.sceneBoundingRect().center() - pos).manhattanLength() 
             for item in self.scene.items() 
             if isinstance(item, QGraphicsItemGroup)
         ]
-        if ellipses:
-            return min(zip(ellipses,distances), key=lambda x: x[1])[0]
+
+        # return the closest group
+        if groups:
+            return min(zip(groups,distances), key=lambda x: x[1])[0]
 
     @property    
     def control_points(self):
+
+        # get the center position of all ellipses in the scene
         centers = [
             item.sceneBoundingRect().center() 
             for item in self.scene.items() 
