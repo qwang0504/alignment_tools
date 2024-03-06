@@ -4,7 +4,7 @@ setup(
     name='alignment_tools',
     python_requires='>=3.8',
     author='Martin Privat',
-    version='0.0.5',
+    version='0.1.0',
     packages=['alignment_tools'],
     license='Creative Commons Attribution-Noncommercial-Share Alike license',
     description='alignment tools',
@@ -12,7 +12,6 @@ setup(
     install_requires=[
         "numpy", 
         "PyQt5",
-        "pyqtgraph",
         "opencv-python",
         "antspyx",
         "qt_widgets @ git+https://github.com/ElTinmar/qt_widgets.git@main",

@@ -1,445 +1,16 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView, QFrame
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QPainter, QColor, QFont, QPen
-from numpy.typing import NDArray
-import numpy as np
-from qt_widgets import NDarray_to_QPixmap, LabeledDoubleSpinBox, LabeledSliderDoubleSpinBox, LabeledSliderSpinBox
-from image_tools import im2single, im2uint8
-import pyqtgraph as pg
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
+    QTableWidget, QTableWidgetItem, QHeaderView, 
+    QFrame, QGroupBox)
+from PyQt5.QtCore import Qt
 import cv2
+import numpy as np
+from qt_widgets import LabeledDoubleSpinBox
+from image_tools import im2single, im2uint8, im2gray, ControlPoint, Enhance, ImageViewer
 import ants
 
-# https://github.com/pyqtgraph/pyqtgraph/blob/master/pyqtgraph/examples
 
-# TODO: this probably belongs in image tools
-class ImageControl(QWidget):
-    '''
-    Contains an image and controls the histogram
-    Note that some operations are non-linear (e.g clipping or gamma),
-    which means the order in which operations are applied matters.
-    The order is the order of the widgets top->down.
-    '''
-
-    # TODO be able to reorganize widgets vertically to change the order of operations ?
-    # TODO c&b and min/max not independent, change them concurently
-
-    ZOOM_SPEED = 0.2
-    PAN_SPEED = 4
-
-    def __init__(self, image: NDArray, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-        self.set_image(image)
-
-        # setup zoom and pan
-        self.zoom = 1.0
-        self.last_mouse_pos = QPoint(0,0)
-        self.im_height = self.image.shape[0]
-        self.im_width = self.image.shape[1]
-        self.bottomleft = QPoint(0,0)
-        self.topright = QPoint(self.im_width,self.im_height)
-        self.center = QPoint(self.im_width//2,self.im_height//2)
-
-        self.state = {
-            'contrast': [1.0 for i in range(self.num_channels)],
-            'brightness': [0.0 for i in range(self.num_channels)],
-            'gamma': [1.0 for i in range(self.num_channels)],
-            'min': [0.0 for i in range(self.num_channels)],
-            'max': [1.0 for i in range(self.num_channels)]
-        }
-        
-        self.create_components()
-        self.layout_components()
-        
-        # update 
-        self.update_histogram()
-
-    def set_image(self, image: NDArray):
-
-        if len(image.shape) > 3:
-            raise ValueError('Cannot deal with more than 3 dimensions')
-        
-        self.num_channels = 1 if len(image.shape) == 2 else image.shape[2]
-        if self.num_channels == 1:
-            image = image[:,:,np.newaxis]
-
-        self.image = im2single(image)
-        self.image_transformed = self.image.copy() 
-
-    def create_components(self):
-
-        ## image -------------------------------------------------
-        self.image_label = QLabel(self)
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-        self.image_label.wheelEvent = self.on_mouse_wheel
-        self.image_label.mouseMoveEvent = self.on_mouse_move
-
-        ## controls ----------------------------------------------
-
-        # expert mode
-        self.expert = QCheckBox(self)
-        self.expert.setText('expert mode')
-        self.expert.stateChanged.connect(self.expert_mode)
-
-        # channel: which image channel to act on
-        self.channel = LabeledSliderSpinBox(self)
-        self.channel.setText('channel')
-        self.channel.setRange(0,self.num_channels-1)
-        self.channel.setValue(0)
-        self.channel.valueChanged.connect(self.change_channel)
-
-        # contrast
-        self.contrast = LabeledSliderDoubleSpinBox(self)
-        self.contrast.setText('contrast')
-        self.contrast.setRange(0,10)
-        self.contrast.setValue(1.0)
-        self.contrast.setSingleStep(0.05)
-        self.contrast.valueChanged.connect(self.change_contrast)
-
-        # brightness
-        self.brightness = LabeledSliderDoubleSpinBox(self)
-        self.brightness.setText('brightness')
-        self.brightness.setRange(-1,1)
-        self.brightness.setValue(0.0)
-        self.brightness.setSingleStep(0.05)
-        self.brightness.valueChanged.connect(self.change_brightness)
-
-        # gamma
-        self.gamma = LabeledSliderDoubleSpinBox(self)
-        self.gamma.setText('gamma')
-        self.gamma.setRange(0,10)
-        self.gamma.setValue(1.0)
-        self.gamma.setSingleStep(0.05)
-        self.gamma.valueChanged.connect(self.change_gamma)
-
-        # min
-        self.min = LabeledSliderDoubleSpinBox(self)
-        self.min.setText('min')
-        self.min.setRange(0,1)
-        self.min.setValue(0.0)
-        self.min.setSingleStep(0.05)
-        self.min.valueChanged.connect(self.change_min)
-
-        # max
-        self.max = LabeledSliderDoubleSpinBox(self)
-        self.max.setText('max')
-        self.max.setRange(0,1)
-        self.max.setValue(1.0)
-        self.max.setSingleStep(0.05)
-        self.max.valueChanged.connect(self.change_max)
-
-        ## histogram and curve: total transformation applied to pixel values -------
-        self.curve = pg.plot()
-        self.curve.setFixedHeight(100)
-        self.curve.setYRange(0,1)
-        self.histogram = pg.plot()
-        self.histogram.setFixedHeight(150)
-
-        ## auto: make the histogram flat 
-        self.auto = QPushButton(self)
-        self.auto.setText('Auto')
-        self.auto.clicked.connect(self.auto_scale)
-
-        ## reset: back to original histogram
-        self.reset = QPushButton(self)
-        self.reset.setText('Reset')
-        self.reset.clicked.connect(self.reset_transform)
-
-        self.curve.hide()
-        self.histogram.hide()
-
-    def layout_components(self):
-
-        layout_buttons = QHBoxLayout()
-        layout_buttons.addStretch()
-        layout_buttons.addWidget(self.auto)
-        layout_buttons.addWidget(self.reset)
-        layout_buttons.addStretch()
-
-        layout_main = QVBoxLayout(self)
-        layout_main.addStretch()
-        layout_main.addWidget(self.image_label)
-        layout_main.addWidget(self.expert)
-        layout_main.addWidget(self.channel)
-        layout_main.addWidget(self.min)
-        layout_main.addWidget(self.max)
-        layout_main.addWidget(self.gamma)
-        layout_main.addWidget(self.contrast)
-        layout_main.addWidget(self.brightness)
-        layout_main.addWidget(self.curve)
-        layout_main.addWidget(self.histogram)
-        layout_main.addLayout(layout_buttons)
-        layout_main.addStretch()
-
-    def change_channel(self):
-
-        # restore channel state 
-        w = self.channel.value()
-        self.contrast.setValue(self.state['contrast'][w])
-        self.brightness.setValue(self.state['brightness'][w])
-        self.gamma.setValue(self.state['gamma'][w])
-        self.min.setValue(self.state['min'][w])
-        self.max.setValue(self.state['max'][w])
-
-        self.update_histogram()
-
-    def change_brightness(self):
-        self.update_histogram()
-
-    def change_contrast(self):
-        self.update_histogram()
-
-    def change_gamma(self):
-        self.update_histogram()
-
-    def change_min(self):
-
-        w = self.channel.value()
-        m = self.min.value() 
-        M = self.max.value()
-
-        # if min >= max restore old value 
-        if m >= M:
-            self.min.setValue(self.state['min'][w])
-            
-        self.update_histogram()
-
-    def change_max(self):
-
-        w = self.channel.value()
-        m = self.min.value() 
-        M = self.max.value()
-
-        # if min >= max restore old value 
-        if m >= M:
-            self.max.setValue(self.state['max'][w])
-    
-        self.update_histogram()
-
-    def update_histogram(self):
-    
-        # get parameters
-        w = self.channel.value()
-        c = self.contrast.value()
-        b = self.brightness.value()
-        g = self.gamma.value()
-        m = self.min.value()
-        M = self.max.value()
-
-        # update parameter state 
-        self.state['contrast'][w] = c
-        self.state['brightness'][w] = b
-        self.state['gamma'][w] = g
-        self.state['min'][w] = m
-        self.state['max'][w] = M
-
-        # pan and zoom
-        image_cropped = self.image[self.bottomleft.y():self.topright.y(), self.bottomleft.x():self.topright.x(),:]
-        self.image_transformed = cv2.resize(image_cropped, None, fx=self.zoom, fy=self.zoom)
-        if self.num_channels == 1:
-            self.image_transformed = self.image_transformed[:,:,np.newaxis]
-
-        self.curve.clear()
-        self.histogram.clear()
-
-        # TODO: this is a bit slow (histogram update in particular). Parallelize ? Do that on cropped image before resizing ?
-        # reapply transformation on all channels
-        for ch in range(self.num_channels):
-
-            # transfrom image channel
-            I = self.image_transformed[:,:,ch].copy()
-
-            I = np.piecewise(
-                I, 
-                [I<self.state['min'][ch], (I>=self.state['min'][ch]) & (I<=self.state['max'][ch]), I>self.state['max'][ch]],
-                [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
-            )
-            
-            I = np.clip(self.state['contrast'][ch] * (I** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
-
-            self.image_transformed[:,:,ch] = I
-
-            if self.expert.isChecked():
-                
-                # update curves
-                x = np.arange(0,1,0.02)
-                u = np.piecewise(
-                    x, 
-                    [x<self.state['min'][ch], (x>=self.state['min'][ch]) & (x<=self.state['max'][ch]), x>self.state['max'][ch]],
-                    [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
-                )
-                y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
-                self.curve.plot(x,y,pen=(ch,3))
-
-                y, x = np.histogram(I.ravel(), x)
-                self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
-
-        # update image
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-
-    def on_mouse_wheel(self, event):
-        # zoom on wheel scroll
-
-        # get zoom 
-        delta = event.angleDelta().y()
-        self.zoom = max(self.zoom + self.ZOOM_SPEED*(delta and delta // abs(delta)), 1.0)
-        
-        # compute ROI to zoom around current ROI center
-        h, w = self.im_height*self.zoom, self.im_width*self.zoom
-        left = np.clip(int(self.center.x()*self.zoom - self.im_width/2), 0, w - self.im_width)
-        right = left + self.im_width
-        bottom = np.clip(int(self.center.y()*self.zoom - self.im_height/2), 0, h - self.im_height)
-        top = bottom + self.im_height
-
-        # store ROI
-        self.bottomleft = QPoint(left, bottom)/self.zoom
-        self.topright = QPoint(right, top)/self.zoom
-        self.center = QPoint((left+right)/2, (bottom+top)/2)/self.zoom
-
-        # update image
-        self.update_histogram()
-
-    def on_mouse_move(self, event):
-        # pan on right mouse click
-
-        if event.buttons() == Qt.RightButton:
-
-            pos = event.pos()
-            
-            # pan on edges
-            x, y = pos.x(), pos.y()
-            dx, dy = 0,0
-            if x < 0.05*self.im_width:
-                dx += -self.PAN_SPEED*self.im_width/100
-                local_coord = QPoint(0.05*self.im_width, y)
-                global_coord = self.image_label.mapToGlobal(local_coord)
-                self.cursor().setPos(global_coord)
-            elif x > 0.9*self.im_width:
-                dx += self.PAN_SPEED*self.im_width/100
-                local_coord = QPoint(0.9*self.im_width, y)
-                global_coord = self.image_label.mapToGlobal(local_coord)
-                self.cursor().setPos(global_coord)
-            if y < 0.05*self.im_height:
-                dy += -self.PAN_SPEED*self.im_height/100
-                local_coord = QPoint(x, 0.05*self.im_height)
-                global_coord = self.image_label.mapToGlobal(local_coord)
-                self.cursor().setPos(global_coord)
-            elif y > 0.9*self.im_height:
-                dy += self.PAN_SPEED*self.im_height/100
-                local_coord = QPoint(x, 0.9*self.im_height)
-                global_coord = self.image_label.mapToGlobal(local_coord)
-                self.cursor().setPos(global_coord)
-        
-            # compute ROI 
-            h, w = self.im_height*self.zoom, self.im_width*self.zoom
-            left = np.clip(int(self.bottomleft.x()*self.zoom + dx), 0, w - self.im_width)
-            right = left + self.im_width
-            bottom = np.clip(int(self.bottomleft.y()*self.zoom + dy), 0, h - self.im_height)
-            top = bottom + self.im_height
-
-            # store ROI
-            self.bottomleft = QPoint(left, bottom)/self.zoom
-            self.topright = QPoint(right, top)/self.zoom
-            self.center = QPoint((left+right)/2, (bottom+top)/2)/self.zoom
-
-            # update image
-            self.update_histogram()
-
-    def auto_scale(self):
-
-        m = np.percentile(self.image, 5)
-        M = np.percentile(self.image, 99)
-        self.min.setValue(m)
-        self.max.setValue(M)
-        self.update_histogram()
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-    
-    def reset_transform(self):
-        
-        # reset state
-        self.state = {
-            'contrast': [1.0 for i in range(self.num_channels)],
-            'brightness': [0.0 for i in range(self.num_channels)],
-            'gamma': [1.0 for i in range(self.num_channels)],
-            'min': [0.0 for i in range(self.num_channels)],
-            'max': [1.0 for i in range(self.num_channels)]
-        }
-                
-        # reset parameters
-        self.contrast.setValue(1.0)
-        self.brightness.setValue(0.0)
-        self.gamma.setValue(1.0)
-        self.min.setValue(0.0)
-        self.max.setValue(1.0)
-
-        # reset image
-        self.image_transformed = self.image.copy()
-        self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))
-        self.update_histogram()
-
-    def expert_mode(self):
-
-        if self.expert.isChecked():
-            self.curve.show()
-            self.histogram.show()
-        else:
-            self.curve.hide()
-            self.histogram.hide()
-
-        self.update_histogram()
-
-def l2(p: QPoint)-> float :
-    return np.sqrt(p.x()**2 + p.y()**2)
-
-class ImageControlCP(ImageControl):
-
-    def __init__(self, image: NDArray, *args, **kwargs):
-        
-        super().__init__(image, *args, **kwargs)
-        self.control_points = []
-        self.image_label.mousePressEvent = self.on_mouse_press
-        
-    def paintEvent(self, event):
-
-        # redraw over image
-        painter = QPainter(self.image_label.pixmap())
-        pen = QPen()
-        pen.setWidth(3)
-        font = QFont()
-        font.setPixelSize(30)
-        pen_color = QColor(255, 0, 0, 255)
-        pen.setColor(pen_color)
-        painter.setPen(pen)
-        painter.setFont(font)
-        offset = QPoint(5,-5)
-        for cp in self.control_points:
-            painter.drawPoint((cp[0]-self.bottomleft)*self.zoom)
-            painter.drawText((cp[0]+offset-self.bottomleft)*self.zoom, str(cp[1]))
-        
-    def on_mouse_press(self, event):
-        
-        # left-click adds a new control point
-        if event.button() == Qt.LeftButton:
-            
-            # remove point with shift pressed
-            if event.modifiers() == Qt.ShiftModifier:
-                # get closest point and delete from list of points
-                distances = [l2(event.pos() - pos) for (pos, name) in self.control_points]
-                if distances:
-                    closest_point = np.argmin(distances)
-                    self.control_points.pop(closest_point)
-
-            # add point otherwise
-            else:
-                num = 0 if not self.control_points else max(self.control_points, key=lambda x: x[1])[1] + 1
-                pos = event.pos()/self.zoom + self.bottomleft 
-                self.control_points.append((pos, num))
-            
-        self.update_histogram()
-        self.update()
-
-def affine_transformation_matrix_to_params(A: NDArray):
+def affine_transformation_matrix_to_params(A: np.ndarray):
     '''
     Decompose affine transformation into shear, rotation, scaling and translation
     This decomposition assumes the following order: scaling, shear, rotation and 
@@ -460,7 +31,8 @@ def affine_transformation_matrix_to_params(A: NDArray):
 
     return (s_x, s_y, theta, h_x, t_x, t_y)
 
-def ANTsTransform_to_matrix(transform):
+
+def ANTsTransform_to_matrix(transform) -> np.ndarray:
     # transform ANTsTransform object into a numpy affine transformation matrix
     # ANTsTransform.fixed_parameters stores the center of rotation
     # ANTsTransform.parameters store additional rotation/scale/shear/translation
@@ -481,28 +53,32 @@ def ANTsTransform_to_matrix(transform):
 
     return affine_matrix
 
+
 class AlignAffine2D(QWidget):
-    def __init__(self, fixed: NDArray, moving: NDArray, *args, **kwargs) -> None:
+
+    def __init__(self, fixed: np.ndarray, moving: np.ndarray, *args, **kwargs) -> None:
         
         super().__init__(*args, **kwargs)
 
-        self.moving = moving
-        self.fixed = fixed
+        self.moving = im2uint8(im2gray(im2single(moving)))
+        self.fixed = im2uint8(im2gray(im2single(fixed)))
         self.moving_transformed = self.moving
         self.overlay = np.dstack((self.fixed,np.zeros_like(self.fixed),np.zeros_like(self.fixed)))
         self.affine_transform = np.eye(3,dtype=float)
         self.create_components()
         self.layout_components()
         self.setWindowTitle("Registration2D")
-        self.closeEvent = self.on_close
 
     def create_components(self):
 
         ## images
 
-        self.moving_label = ImageControlCP(self.moving)
-        self.fixed_label = ImageControlCP(self.fixed)
-        self.overlay_label = ImageControl(self.overlay)
+        self.moving_cp = ControlPoint(self.moving)
+        self.moving_label = Enhance(self.moving_cp)
+        self.fixed_cp = ControlPoint(self.fixed)
+        self.fixed_label = Enhance(self.fixed_cp)
+        self.overlay_viewer = ImageViewer(self.overlay)
+        self.overlay_label = Enhance(self.overlay_viewer)
 
         ## 2D affine transform parameters
 
@@ -715,8 +291,8 @@ class AlignAffine2D(QWidget):
     def align_control_points(self):
 
         # find affine transformation between two sets of points
-        a = [[pos.x(), pos.y(), 1] for pos, name in self.fixed_label.control_points]
-        b = [[pos.x(), pos.y(), 1] for pos, name in self.moving_label.control_points]
+        a = [[pos.x(), pos.y(), 1] for pos in self.fixed_cp.control_points]
+        b = [[pos.x(), pos.y(), 1] for pos in self.moving_cp.control_points]
         A = np.transpose(np.linalg.lstsq(b, a, rcond=None)[0])
         self.affine_transform = A
 
@@ -768,7 +344,7 @@ class AlignAffine2D(QWidget):
         self.update_table()
         self.update_images()
 
-    def on_close(self, event):
+    def closeEvent(self, event):
         self.moving_label.close()
         self.fixed_label.close()
         self.overlay_label.close()
