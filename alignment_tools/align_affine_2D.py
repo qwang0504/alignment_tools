@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView, QFrame
+from PyQt5.QtWidgets import QWidget, QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView, QFrame
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 from numpy.typing import NDArray
