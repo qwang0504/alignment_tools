@@ -272,10 +272,8 @@ class ImageControl(QWidget):
                 y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
                 self.curve.plot(x,y,pen=(ch,3))
 
-                # update histogram (slow)
-                for ch in range(self.num_channels):
-                    y, x = np.histogram(I.ravel(), x)
-                    self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
+                y, x = np.histogram(I.ravel(), x)
+                self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
 
         # update image
         self.image_label.setPixmap(NDarray_to_QPixmap(im2uint8(self.image_transformed)))

@@ -362,9 +362,8 @@ class Enhance(QWidget):
                 self.curve.plot(x,y,pen=(ch,3))
 
                 # update histogram (slow)
-                for ch in range(self.num_channels):
-                    y, x = np.histogram(I.ravel(), x)
-                    self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
+                y, x = np.histogram(I.ravel(), x)
+                self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
 
         # update image
         self.image_widget.set_image(im2uint8(self.image_enhanced))
