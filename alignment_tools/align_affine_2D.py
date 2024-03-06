@@ -75,10 +75,6 @@ class ImageControl(QWidget):
         self.image_label.wheelEvent = self.on_mouse_wheel
         self.image_label.mouseMoveEvent = self.on_mouse_move
 
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidget(self.image_label)
-        self.scroll_area.setWidgetResizable(True)
-
         ## controls ----------------------------------------------
 
         # expert mode
@@ -163,7 +159,7 @@ class ImageControl(QWidget):
 
         layout_main = QVBoxLayout(self)
         layout_main.addStretch()
-        layout_main.addWidget(self.scroll_area)
+        layout_main.addWidget(self.image_label)
         layout_main.addWidget(self.expert)
         layout_main.addWidget(self.channel)
         layout_main.addWidget(self.min)
