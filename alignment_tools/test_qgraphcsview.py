@@ -1,10 +1,12 @@
-from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsItemGroup, QGraphicsItem
+from PyQt5.QtWidgets import QApplication, QWidget, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsItemGroup, QGraphicsItem
 from PyQt5.QtCore import Qt, QRectF, QPoint, QPointF
-from PyQt5.QtGui import QBrush, QPen, QFont, QTransform
+from PyQt5.QtGui import QBrush, QPen, QFont, QPixmap
 import sys
 import cv2
 import numpy as np
 from qt_widgets import NDarray_to_QPixmap
+from typing import Protocol
+
 
 class ControlPoint(QGraphicsView):
 
@@ -16,18 +18,18 @@ class ControlPoint(QGraphicsView):
 
         super().__init__(*args, **kwargs)
 
-        self.image = image
         self.labels = {}
-
         self.scene = QGraphicsScene()
-        self.pixmap_item = self.scene.addPixmap(NDarray_to_QPixmap(image))
+        self.pixmap_item = self.scene.addPixmap(QPixmap())
         self.setScene(self.scene)
         self.brush = QBrush(Qt.red)
         self.pen = QPen(Qt.red)
         self.font = QFont("Arial", 20)
+        self.set_image(image)
 
     def set_image(self, image: np.ndarray):
-        
+
+        # TODO convert to 8bit RGB ?
         self.image = image
         self.pixmap_item.setPixmap(NDarray_to_QPixmap(image))
 
@@ -126,6 +128,21 @@ class ControlPoint(QGraphicsView):
                     group.removeFromGroup(item)
                     self.scene.removeItem(item)
                 self.scene.destroyItemGroup(group)
+
+
+
+class ImageWidget(Protocol):
+    
+    def set_image(self, image: np.ndarray) -> None:
+        ...
+
+class Enhance(QWidget):
+
+    def __init__(self, image_widget: ImageWidget, *args, **kwargs):
+        
+        self.image_widget = image_widget
+
+
                 
 
 if __name__ == "__main__":
