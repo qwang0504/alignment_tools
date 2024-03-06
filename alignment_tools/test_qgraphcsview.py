@@ -332,8 +332,6 @@ class Enhance(QWidget):
         self.curve.clear()
         self.histogram.clear()
 
-        # TODO: this is a bit slow (histogram update in particular). Parallelize ? Do that on cropped image before resizing ?
-        # reapply transformation on all channels
         for ch in range(self.num_channels):
 
             # transfrom image channel
@@ -361,7 +359,7 @@ class Enhance(QWidget):
                 y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
                 self.curve.plot(x,y,pen=(ch,3))
 
-                # update histogram (slow)
+                # update histogram
                 y, x = np.histogram(I.ravel(), x)
                 self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
 
