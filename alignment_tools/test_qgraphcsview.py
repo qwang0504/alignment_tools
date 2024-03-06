@@ -178,6 +178,11 @@ class Enhance(QWidget):
         self.expert = QCheckBox(self)
         self.expert.setText('expert mode')
         self.expert.stateChanged.connect(self.expert_mode)
+    
+        # grayscale
+        self.grayscale = QCheckBox(self)
+        self.grayscale.setText('grayscale')
+        self.grayscale.stateChanged.connect(self.grayscale_mode)
 
         # channel: which image channel to act on
         self.channel = LabeledSliderSpinBox(self)
@@ -257,6 +262,7 @@ class Enhance(QWidget):
         layout_main = QVBoxLayout(self)
         layout_main.addWidget(self.image_widget)
         layout_main.addWidget(self.expert)
+        layout_main.addWidget(self.grayscale)
         layout_main.addWidget(self.channel)
         layout_main.addWidget(self.min)
         layout_main.addWidget(self.max)
@@ -332,20 +338,25 @@ class Enhance(QWidget):
         self.curve.clear()
         self.histogram.clear()
 
-        for ch in range(self.num_channels):
+        for im_channel in range(self.num_channels):
+
+            if self.grayscale.isChecked():
+                param_channel = w
+            else:
+                param_channel = im_channel
 
             # transfrom image channel
-            I = self.image[:,:,ch].copy()
+            I = self.image[:,:,im_channel].copy()
 
             I = np.piecewise(
                 I, 
-                [I<self.state['min'][ch], (I>=self.state['min'][ch]) & (I<=self.state['max'][ch]), I>self.state['max'][ch]],
-                [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
+                [I<self.state['min'][param_channel], (I>=self.state['min'][param_channel]) & (I<=self.state['max'][param_channel]), I>self.state['max'][param_channel]],
+                [0, lambda x: (x-self.state['min'][param_channel])/(self.state['max'][param_channel]-self.state['min'][param_channel]), 1]
             )
             
-            I = np.clip(self.state['contrast'][ch] * (I** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
+            I = np.clip(self.state['contrast'][param_channel] * (I** self.state['gamma'][param_channel] -0.5) + self.state['brightness'][param_channel] + 0.5, 0 ,1)
 
-            self.image_enhanced[:,:,ch] = I
+            self.image_enhanced[:,:,im_channel] = I
 
             if self.expert.isChecked():
                 
@@ -353,15 +364,15 @@ class Enhance(QWidget):
                 x = np.arange(0,1,0.02)
                 u = np.piecewise(
                     x, 
-                    [x<self.state['min'][ch], (x>=self.state['min'][ch]) & (x<=self.state['max'][ch]), x>self.state['max'][ch]],
-                    [0, lambda x: (x-self.state['min'][ch])/(self.state['max'][ch]-self.state['min'][ch]), 1]
+                    [x<self.state['min'][param_channel], (x>=self.state['min'][param_channel]) & (x<=self.state['max'][param_channel]), x>self.state['max'][param_channel]],
+                    [0, lambda x: (x-self.state['min'][param_channel])/(self.state['max'][param_channel]-self.state['min'][param_channel]), 1]
                 )
-                y = np.clip(self.state['contrast'][ch] * (u** self.state['gamma'][ch] -0.5) + self.state['brightness'][ch] + 0.5, 0 ,1)
-                self.curve.plot(x,y,pen=(ch,3))
+                y = np.clip(self.state['contrast'][param_channel] * (u** self.state['gamma'][param_channel] -0.5) + self.state['brightness'][param_channel] + 0.5, 0 ,1)
+                self.curve.plot(x,y,pen=(im_channel,3))
 
                 # update histogram
                 y, x = np.histogram(I.ravel(), x)
-                self.histogram.plot(x,y,stepMode="center", pen=(ch,3))
+                self.histogram.plot(x,y,stepMode="center", pen=(im_channel,3))
 
         # update image
         self.image_widget.set_image(im2uint8(self.image_enhanced))
@@ -409,6 +420,13 @@ class Enhance(QWidget):
 
         self.update_histogram()
 
+    def grayscale_mode(self):
+
+        if self.grayscale.isChecked():
+            self.channel.setEnabled(False)
+        else:
+            self.channel.setEnabled(True)
+        
 if __name__ == "__main__":
 
     image = cv2.imread('toy_data/image_00.jpg')[:,:,0]
