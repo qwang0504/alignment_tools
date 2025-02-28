@@ -15,6 +15,6 @@ setup(
         "opencv-python",
         "antspyx",
         "qt_widgets @ git+https://github.com/ElTinmar/qt_widgets.git@main",
-        "image_tools @ git+https://github.com/ElTinmar/image_tools.git@main"
+        "image_tools @ git+https://github.com/qwang0504/image_tools.git@main"
     ]
 )
